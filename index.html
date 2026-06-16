@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PYP Year Planner — BC Curriculum K–7</title>
+<!-- xlsx-js-style: SheetJS community build + cell styling (bold, fills, borders, wrap) -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+  :root{
+    --paper:#f5f6f3; --card:#ffffff; --ink:#20262e; --ink-soft:#5a6675;
+    --line:#e3e6e0; --line-soft:#eef0ec; --accent:#0e7c66; --accent-ink:#0a5c4b;
+    --warn-bg:#fbeee0; --warn-ink:#8a4b16; --warn-line:#e8c39a;
+    --t0:#c65d5d; --t1:#c8893a; --t2:#7b5ea7; --t3:#2e8b8b; --t4:#3f6fb0; --t5:#5c8a3c;
+    --r:10px; --r-sm:7px;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);
+    font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+  /* ---- shell ---- */
+  .app{max-width:1180px;margin:0 auto;padding:0 20px 120px}
+  header.bar{display:flex;align-items:center;gap:16px;padding:18px 0 16px;
+    border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .brand h1{font-size:19px;margin:0;letter-spacing:-.01em;font-weight:680}
+  .brand p{margin:1px 0 0;font-size:12.5px;color:var(--ink-soft);letter-spacing:.02em;text-transform:uppercase}
+  .bar .spacer{flex:1}
+  .data-chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;
+    color:var(--ink-soft);background:var(--card);border:1px solid var(--line);
+    padding:6px 11px;border-radius:999px}
+  .data-chip .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+  .data-chip.sample .dot{background:var(--t1)}
+
+  /* ---- layout ---- */
+  .layout{display:grid;grid-template-columns:228px 1fr;gap:34px;margin-top:26px}
+  @media (max-width:820px){.layout{grid-template-columns:1fr;gap:18px}}
+
+  /* ---- stepper ---- */
+  .rail{position:sticky;top:18px;align-self:start}
+  .rail ol{list-style:none;margin:0;padding:0;counter-reset:s}
+  .rail li{counter-increment:s;display:flex;gap:12px;padding:9px 0;color:var(--ink-soft);
+    font-size:14px;cursor:pointer;align-items:flex-start}
+  .rail li .num{flex:none;width:25px;height:25px;border-radius:50%;border:1.5px solid var(--line);
+    display:grid;place-items:center;font-size:12.5px;font-weight:650;background:var(--card);color:var(--ink-soft)}
+  .rail li .num::before{content:counter(s)}
+  .rail li.active{color:var(--ink);font-weight:620}
+  .rail li.active .num{border-color:var(--accent);background:var(--accent);color:#fff}
+  .rail li.done .num{border-color:var(--accent);color:var(--accent)}
+  .rail li.done .num::before{content:"✓"}
+  .rail li.disabled{opacity:.45;cursor:not-allowed}
+  @media (max-width:820px){
+    .rail{position:static}
+    .rail ol{display:flex;gap:6px;overflow:auto}
+    .rail li{flex-direction:column;align-items:center;gap:5px;text-align:center;font-size:11px;min-width:64px}
+  }
+
+  /* ---- main / cards ---- */
+  .step-head{margin:0 0 4px}
+  .step-head h2{font-size:23px;margin:0;letter-spacing:-.015em;font-weight:680}
+  .step-head p{margin:5px 0 0;color:var(--ink-soft);max-width:62ch}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-top:18px}
+  .card.spine{border-left-width:4px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:560px){.grid2{grid-template-columns:1fr}}
+  label.fld{display:block}
+  label.fld .lab{display:block;font-size:13px;font-weight:620;margin-bottom:6px;letter-spacing:.01em}
+  label.fld .hint{font-weight:400;color:var(--ink-soft);font-size:12px}
+  input[type=date],input[type=number],input[type=text],select,textarea{
+    width:100%;font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);
+    border-radius:var(--r-sm);padding:9px 11px}
+  textarea{resize:vertical;min-height:64px;line-height:1.45}
+  input:focus,select:focus,textarea:focus,button:focus-visible,.chip:focus-visible{
+    outline:2px solid var(--accent);outline-offset:1px}
+  .inline{display:flex;align-items:center;gap:10px}
+  .switch{display:inline-flex;align-items:center;gap:9px;font-size:14px;cursor:pointer;user-select:none}
+  .switch input{width:auto}
+
+  /* ---- theme tabs ---- */
+  .theme-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .theme-tab{display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;
+    border:1px solid var(--line);background:var(--card);font-size:13px;color:var(--ink-soft);
+    max-width:240px}
+  .theme-tab .swatch{width:10px;height:10px;border-radius:50%;flex:none}
+  .theme-tab .tt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .theme-tab.active{color:var(--ink);border-color:var(--ink);font-weight:620}
+  .theme-tab .chk{font-size:11px;color:var(--accent)}
+
+  /* ---- subject chips ---- */
+  .chips{display:flex;gap:9px;flex-wrap:wrap}
+  .chip{padding:8px 13px;border-radius:999px;border:1px solid var(--line);background:#fff;
+    font-size:13.5px;color:var(--ink);transition:background .12s,border-color .12s}
+  .chip[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  /* ---- standards ---- */
+  .subj-card{border:1px solid var(--line);border-radius:var(--r);margin-top:14px;overflow:hidden}
+  .subj-card>h4{margin:0;padding:13px 16px;background:var(--line-soft);font-size:15px;
+    display:flex;justify-content:space-between;align-items:center}
+  .subj-card>h4 .count{font-size:12px;color:var(--ink-soft);font-weight:500}
+  .subj-body{padding:6px 16px 16px}
+  .grade-band{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--ink-soft);margin:16px 0 4px;border-bottom:1px solid var(--line-soft);padding-bottom:5px}
+  .std-group{font-size:12.5px;font-weight:680;color:var(--accent-ink);margin:13px 0 3px}
+  .std{border-bottom:1px solid var(--line-soft)}
+  .std-row{display:flex;gap:10px;align-items:flex-start;padding:8px 0}
+  .std-row input{margin-top:3px;width:auto;flex:none}
+  .std-row .txt{flex:1;font-size:14px}
+  .std-row .exp{flex:none;background:none;border:none;color:var(--ink-soft);font-size:12px;
+    padding:2px 5px;border-radius:5px}
+  .std-row .exp:hover{background:var(--line-soft)}
+  .elab{display:none;padding:0 0 9px 32px;font-size:13px;color:var(--ink-soft)}
+  .elab.open{display:block}
+  .elab dt{font-style:italic;color:var(--ink);font-weight:600}
+  .elab dd{margin:0 0 6px}
+  .keyc{margin-top:14px}
+  .empty-note{color:var(--ink-soft);font-size:13.5px;font-style:italic;padding:6px 0}
+
+  /* ---- schedule ---- */
+  .sched-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:14px;align-items:center;
+    padding:13px 14px;border:1px solid var(--line);border-radius:var(--r);margin-top:10px;
+    border-left-width:4px}
+  .sched-row .mv{display:flex;flex-direction:column;gap:3px}
+  .sched-row .mv button{width:24px;height:20px;border:1px solid var(--line);background:#fff;
+    border-radius:5px;line-height:1;font-size:11px;color:var(--ink-soft)}
+  .sched-row .mv button:disabled{opacity:.3;cursor:default}
+  .sched-row .nm{font-weight:620}
+  .sched-row .nm small{display:block;font-weight:400;color:var(--ink-soft);font-size:12px}
+  .sched-row .dur{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-soft)}
+  .sched-row .dur input{width:62px}
+  .sched-row .dates{font-size:13px;color:var(--ink-soft);text-align:right;min-width:128px}
+  @media (max-width:620px){.sched-row{grid-template-columns:auto 1fr;row-gap:8px}
+    .sched-row .dates{grid-column:1/3;text-align:left}.sched-row .dur{grid-column:1/3}}
+  .meter{margin-top:18px;font-size:14px}
+  .banner{border-radius:var(--r);padding:13px 16px;margin-top:14px;font-size:14px;
+    border:1px solid var(--warn-line);background:var(--warn-bg);color:var(--warn-ink)}
+  .banner.ok{border-color:#bcd9c4;background:#eaf4ec;color:#2c6e49}
+
+  /* ---- export ---- */
+  .ov-table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px}
+  .ov-table th,.ov-table td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+  .ov-table th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft)}
+  .ov-table td .sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
+
+  /* ---- action bar ---- */
+  .actions{position:fixed;left:0;right:0;bottom:0;background:rgba(245,246,243,.92);
+    backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  .actions .inner{max-width:1180px;margin:0 auto;padding:13px 20px;display:flex;
+    align-items:center;gap:12px}
+  .btn{padding:11px 20px;border-radius:var(--r-sm);font-size:14.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:disabled{background:#b7c4bf;border-color:#b7c4bf;cursor:not-allowed}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--ink-soft)}
+  .actions .spacer{flex:1}
+  .actions .msg{font-size:13px;color:var(--ink-soft)}
+  .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <h1>PYP Year Planner</h1>
+      <p>BC Curriculum · K–7</p>
+    </div>
+    <div class="spacer"></div>
+    <span id="dataChip" class="data-chip"><span class="dot"></span><span id="dataLabel">Sample data</span></span>
+    <button class="btn" id="loadBtn">Load curriculum…</button>
+    <input type="file" id="fileInput" accept="application/json,.json" class="vh">
+  </header>
+
+  <div class="layout">
+    <nav class="rail" aria-label="Steps">
+      <ol id="rail"></ol>
+    </nav>
+    <main id="main" aria-live="polite"></main>
+  </div>
+</div>
+
+<div class="actions">
+  <div class="inner">
+    <button class="btn ghost" id="backBtn">← Back</button>
+    <span class="spacer"></span>
+    <span class="msg" id="actionMsg"></span>
+    <button class="btn primary" id="nextBtn">Continue →</button>
+  </div>
+</div>
+
+<script>
+/* ===================================================================== *
+ * Sample curriculum — same shape as bc_curriculum.json. Replace by
+ * loading the real file via "Load curriculum…".
+ * ===================================================================== */
+const SAMPLE = {
+  source:"sample", max_grade:7,
+  subjects:{
+    "Mathematics":{slug:"mathematics",grades:{
+      "3":{curricular_competencies:[
+            {text:"Use reasoning to explore and make connections",group:"Reasoning and analyzing",
+             elaborations:{reasoning:"inductive and deductive reasoning; prediction; analysis"}},
+            {text:"Develop mental math strategies to solve problems",group:"Reasoning and analyzing",elaborations:{}}],
+           content:[
+            {text:"addition and subtraction facts to 20",group:null,
+             elaborations:{"facts to 20":"introduce computational strategies, e.g., decomposing, making and bridging 10"}},
+            {text:"fractions concepts",group:null,elaborations:{fractions:"part/whole, equal sharing"}}]},
+      "4":{curricular_competencies:[
+            {text:"Estimate reasonably to solve problems",group:"Reasoning and analyzing",elaborations:{estimate:"strategies for estimating quantities"}}],
+           content:[
+            {text:"multiplication and division facts to 100",group:null,elaborations:{}},
+            {text:"decimals to hundredths",group:null,elaborations:{}}]}}},
+    "Science":{slug:"science",grades:{
+      "3":{curricular_competencies:[
+            {text:"Make observations about living and non-living things",group:"Questioning and predicting",elaborations:{observations:"use senses and simple tools"}}],
+           content:[
+            {text:"biodiversity in the local environment",group:null,elaborations:{biodiversity:"variety of living things in a region"}}]},
+      "4":{curricular_competencies:[
+            {text:"Identify questions about familiar objects that can be investigated",group:"Questioning and predicting",elaborations:{}}],
+           content:[
+            {text:"sensing and responding: humans, other animals, plants",group:null,elaborations:{}}]}}},
+    "Arts Education":{slug:"arts-education",grades:{
+      "3":{curricular_competencies:[
+            {text:"Explore artistic expressions of self and community",group:"Exploring and creating",elaborations:{community:"local, cultural, and global communities"}}],
+           content:[
+            {text:"elements in the arts: dance, drama, music, visual arts",group:null,elaborations:{}}]},
+      "4":{curricular_competencies:[
+            {text:"Create artistic works collaboratively and individually",group:"Exploring and creating",elaborations:{}}],
+           content:[{text:"image-development strategies",group:null,elaborations:{}}]}}}
+  }
+};
+
+/* ===================================================================== *
+ * State
+ * ===================================================================== */
+const THEMES = [
+  {name:"Who We Are", color:"var(--t0)", hex:"#c65d5d"},
+  {name:"Where We Are in Place and Time", color:"var(--t1)", hex:"#c8893a"},
+  {name:"How We Express Ourselves", color:"var(--t2)", hex:"#7b5ea7"},
+  {name:"How the World Works", color:"var(--t3)", hex:"#2e8b8b"},
+  {name:"How We Organize Ourselves", color:"var(--t4)", hex:"#3f6fb0"},
+  {name:"Sharing the Planet", color:"var(--t5)", hex:"#5c8a3c"},
+];
+const THEME_HEX = ["c65d5d","c8893a","7b5ea7","2e8b8b","3f6fb0","5c8a3c"];
+const GRADE_ORDER = ["K","1","2","3","4","5","6","7"];
+const STEPS = ["Plan setup","Build units","Order & schedule","Generate & export"];
+
+/* ---- xlsx-js-style cell + style helpers (used at export) ---- */
+function xc(v,s){return {v:v==null?"":String(v),t:"s",s:s||{}};}        // string cell
+function xn(v,s){return {v:Number(v)||0,t:"n",s:s||{}};}                // number cell
+function thinB(rgb){const b={style:"thin",color:{rgb}};return{top:b,bottom:b,left:b,right:b};}
+const STY={
+  ovTitle:{font:{bold:true,sz:14,color:{rgb:"20262E"}}},
+  ovSub:{font:{sz:11,italic:true,color:{rgb:"5A6675"}}},
+  ovHead:{font:{bold:true,sz:11,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:"20262E"}},alignment:{vertical:"center"},border:thinB("D9DCD6")},
+  ovCell:{font:{sz:11,color:{rgb:"20262E"}},alignment:{vertical:"top",wrapText:true},border:thinB("E3E6E0")},
+  meta:{font:{sz:11,italic:true,color:{rgb:"5A6675"}}},
+  central:{font:{bold:true,sz:11,color:{rgb:"20262E"}},alignment:{wrapText:true,vertical:"top"}},
+  sep:{font:{sz:11,color:{rgb:"C9CEC7"}}},
+  subject:{font:{bold:true,sz:12,color:{rgb:"20262E"}},fill:{fgColor:{rgb:"EEF0EC"}}},
+  keyc:{font:{italic:true,sz:11,color:{rgb:"0A5C4B"}},alignment:{wrapText:true,vertical:"top"}},
+  label:{font:{bold:true,sz:11,color:{rgb:"0A5C4B"}}},
+  bullet:{font:{sz:11,color:{rgb:"20262E"}},alignment:{wrapText:true,vertical:"top"}},
+  elab:{font:{italic:true,sz:10,color:{rgb:"5A6675"}},alignment:{wrapText:true,vertical:"top"}},
+};
+const themeBand=hex=>({font:{bold:true,sz:14,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:hex}},alignment:{vertical:"center"}});
+const themeCell=hex=>({font:{bold:true,sz:11,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:hex}},alignment:{vertical:"center"},border:thinB("E3E6E0")});
+
+const state = {
+  data:SAMPLE, dataLabel:"Sample data",
+  step:0, activeTheme:0,
+  setup:{ start:isoDefault("start"), end:isoDefault("end"), split:false, grade:"3", grade2:"4", defaultWeeks:6 },
+  units:THEMES.map(()=>({ subjects:[], perSubject:{}, centralIdea:"", assessment:"" })),
+  order:[0,1,2,3,4,5],
+  durations:{}, // themeIndex -> weeks
+};
+
+/* ===================================================================== *
+ * Date helpers
+ * ===================================================================== */
+function firstTuesdayAfterLabourDay(y){let d=new Date(y,8,1);while(d.getDay()!==1)d.setDate(d.getDate()+1);d.setDate(d.getDate()+1);return d;}
+function lastFridayOfJune(y){let d=new Date(y,5,30);while(d.getDay()!==5)d.setDate(d.getDate()-1);return d;}
+function iso(d){const p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;}
+function isoDefault(which){const y=new Date().getFullYear();return which==="start"?iso(firstTuesdayAfterLabourDay(y)):iso(lastFridayOfJune(y+1));}
+function parseISO(s){const[a,b,c]=s.split("-").map(Number);return new Date(a,b-1,c);}
+function nice(d){return d.toLocaleDateString("en-CA",{month:"short",day:"numeric"});}
+function niceFull(d){return d.toLocaleDateString("en-CA",{month:"long",day:"numeric"});}
+
+/* ===================================================================== *
+ * Derived helpers
+ * ===================================================================== */
+function grades(){return state.setup.split?[state.setup.grade,state.setup.grade2]:[state.setup.grade];}
+function subjectNames(){return Object.keys(state.data.subjects||{}).sort();}
+function standardsFor(subj,grade){
+  const s=state.data.subjects[subj]; const g=s&&s.grades&&s.grades[grade];
+  return {comp:(g&&g.curricular_competencies)||[], content:(g&&g.content)||[]};
+}
+function durationFor(idx){return state.durations[idx]!=null?state.durations[idx]:state.setup.defaultWeeks;}
+function unitStarted(idx){const u=state.units[idx];return u.subjects.length>0||u.centralIdea.trim()||u.assessment.trim();}
+
+function schedule(){
+  const start=parseISO(state.setup.start), end=parseISO(state.setup.end);
+  const wk=7*864e5, avail=(end-start)/wk;
+  let cur=new Date(start); const rows=state.order.map(idx=>{
+    const w=Math.max(1,Math.round(durationFor(idx)));
+    const s=new Date(cur), e=new Date(cur.getTime()+w*wk-864e5);
+    cur=new Date(cur.getTime()+w*wk);
+    return {idx,weeks:w,start:s,end:e};
+  });
+  const total=rows.reduce((a,r)=>a+r.weeks,0);
+  return {rows,total,avail,over:total>avail+1e-6,validDates:end>start};
+}
+
+/* ===================================================================== *
+ * Render — shell
+ * ===================================================================== */
+const main=document.getElementById("main");
+
+function render(){renderRail();renderStep();renderActions();}
+
+function renderRail(){
+  const sc=schedule();
+  const reach=[true,true,true, sc.validDates&&!sc.over]; // step 4 gated
+  document.getElementById("rail").innerHTML=STEPS.map((s,i)=>{
+    const cls=[i===state.step?"active":"", i<state.step?"done":"", !reach[i]?"disabled":""].join(" ");
+    return `<li class="${cls}" data-step="${i}"><span class="num"></span><span>${s}</span></li>`;
+  }).join("");
+  document.querySelectorAll("#rail li").forEach(li=>li.onclick=()=>{
+    const i=+li.dataset.step; if(li.classList.contains("disabled"))return; state.step=i; render();
+  });
+}
+
+function renderStep(){
+  ({0:setupStep,1:unitsStep,2:scheduleStep,3:exportStep})[state.step]();
+}
+
+function renderActions(){
+  const back=document.getElementById("backBtn"), next=document.getElementById("nextBtn"),
+        msg=document.getElementById("actionMsg");
+  back.style.visibility=state.step===0?"hidden":"visible";
+  const sc=schedule();
+  if(state.step===3){
+    next.textContent="Generate Year Plan (.xlsx)";
+    next.disabled=!(sc.validDates&&!sc.over);
+    msg.textContent = !sc.validDates ? "Check your school-year dates."
+      : sc.over ? "Units exceed the school year — fix the schedule first." : "";
+    next.onclick=generate;
+  }else{
+    next.textContent="Continue →"; next.disabled=false; msg.textContent="";
+    next.onclick=()=>{ if(state.step===2&&(sc.over||!sc.validDates)){state.step=2;render();return;} state.step++; render(); };
+  }
+  back.onclick=()=>{state.step=Math.max(0,state.step-1);render();};
+}
+
+/* ===================================================================== *
+ * Step 1 — Setup
+ * ===================================================================== */
+function setupStep(){
+  const s=state.setup;
+  const opts=g=>GRADE_ORDER.map(x=>`<option ${x===g?"selected":""}>${x}</option>`).join("");
+  main.innerHTML=`
+   <div class="step-head"><h2>Plan setup</h2>
+     <p>Set the school year, the grade you teach, and a default length for each unit. You can override any unit's length later.</p></div>
+   <div class="card">
+     <div class="grid2">
+       <label class="fld"><span class="lab">School year starts</span>
+         <input type="date" id="start" value="${s.start}"></label>
+       <label class="fld"><span class="lab">School year ends</span>
+         <input type="date" id="end" value="${s.end}"></label>
+     </div>
+     <div style="margin-top:16px">
+       <label class="switch"><input type="checkbox" id="split" ${s.split?"checked":""}> This is a split class (two sequential grades)</label>
+     </div>
+     <div class="grid2" style="margin-top:12px">
+       <label class="fld"><span class="lab">${s.split?"First grade":"Grade level"}</span>
+         <select id="grade">${opts(s.grade)}</select></label>
+       <label class="fld" id="g2wrap" style="${s.split?"":"display:none"}"><span class="lab">Second grade <span class="hint">(must be sequential)</span></span>
+         <select id="grade2">${opts(s.grade2)}</select></label>
+     </div>
+     <div class="grid2" style="margin-top:12px">
+       <label class="fld"><span class="lab">Default unit duration <span class="hint">weeks</span></span>
+         <input type="number" id="defWeeks" min="1" max="40" value="${s.defaultWeeks}"></label>
+     </div>
+     <p class="empty-note" id="splitNote"></p>
+   </div>`;
+  const $=id=>document.getElementById(id);
+  $("start").onchange=e=>{s.start=e.target.value;renderRail();renderActions();};
+  $("end").onchange=e=>{s.end=e.target.value;renderRail();renderActions();};
+  $("split").onchange=e=>{s.split=e.target.checked; if(s.split)syncSecondGrade(); setupStep(); renderRail();};
+  $("grade").onchange=e=>{s.grade=e.target.value; if(s.split)syncSecondGrade(); setupStep();};
+  $("grade2").onchange=e=>{s.grade2=e.target.value; setupStep();};
+  $("defWeeks").onchange=e=>{s.defaultWeeks=Math.max(1,+e.target.value||1);};
+  function note(){const n=$("splitNote"); n.textContent = s.split
+    ? `Standards will be shown grouped by Grade ${s.grade} and Grade ${s.grade2}.` : "";}
+  note();
+}
+function syncSecondGrade(){
+  const i=GRADE_ORDER.indexOf(state.setup.grade);
+  state.setup.grade2 = GRADE_ORDER[Math.min(i+1,GRADE_ORDER.length-1)];
+  if(state.setup.grade2===state.setup.grade) state.setup.grade2=GRADE_ORDER[Math.max(0,i-1)];
+}
+
+/* ===================================================================== *
+ * Step 2 — Unit builder
+ * ===================================================================== */
+function unitsStep(){
+  main.innerHTML=`
+   <div class="step-head"><h2>Build units</h2>
+     <p>One unit per transdisciplinary theme. Pick subjects, link curriculum standards, then add your key concepts, central idea, and assessment.</p></div>
+   <div class="theme-tabs" id="themeTabs"></div>
+   <div id="unitBody"></div>`;
+  renderThemeTabs();
+  renderUnitBody();
+}
+function renderThemeTabs(){
+  document.getElementById("themeTabs").innerHTML=THEMES.map((t,i)=>`
+    <button class="theme-tab ${i===state.activeTheme?"active":""}" data-i="${i}" style="${i===state.activeTheme?`border-color:${t.color}`:""}">
+      <span class="swatch" style="background:${t.color}"></span>
+      <span class="tt">${t.name}</span>
+      ${unitStarted(i)?'<span class="chk">●</span>':""}
+    </button>`).join("");
+  document.querySelectorAll("#themeTabs .theme-tab").forEach(b=>b.onclick=()=>{state.activeTheme=+b.dataset.i;renderThemeTabs();renderUnitBody();});
+}
+function renderUnitBody(){
+  const i=state.activeTheme, t=THEMES[i], u=state.units[i];
+  const subjects=subjectNames();
+  const body=document.getElementById("unitBody");
+  body.innerHTML=`
+   <div class="card spine" style="border-left-color:${t.color}">
+     <div class="step-head"><h2 style="font-size:18px">Unit ${i+1} — ${t.name}</h2></div>
+     <div style="margin-top:14px"><div class="lab" style="font-size:13px;font-weight:620;margin-bottom:8px">Subjects in this unit</div>
+       <div class="chips" id="subjChips">
+         ${subjects.map(s=>`<button class="chip" data-s="${esc(s)}" aria-pressed="${u.subjects.includes(s)}">${esc(s)}</button>`).join("")
+            || '<span class="empty-note">No subjects found in the loaded curriculum.</span>'}
+       </div>
+     </div>
+     <div id="subjCards"></div>
+     <div style="margin-top:22px">
+       <label class="fld"><span class="lab">Central idea <span class="hint">one overarching statement for the whole unit</span></span>
+         <textarea id="central" placeholder="e.g. Communities adapt to the environments they live in.">${esc(u.centralIdea)}</textarea></label>
+     </div>
+     <div style="margin-top:14px">
+       <label class="fld"><span class="lab">Assessment</span>
+         <textarea id="assess" placeholder="Describe how learning in this unit will be assessed.">${esc(u.assessment)}</textarea></label>
+     </div>
+   </div>`;
+  document.querySelectorAll("#subjChips .chip").forEach(c=>c.onclick=()=>toggleSubject(c.dataset.s));
+  document.getElementById("central").oninput=e=>u.centralIdea=e.target.value;
+  document.getElementById("assess").oninput=e=>u.assessment=e.target.value;
+  renderSubjectCards();
+}
+function toggleSubject(s){
+  const u=state.units[state.activeTheme];
+  if(u.subjects.includes(s)){u.subjects=u.subjects.filter(x=>x!==s);}
+  else{u.subjects.push(s); u.perSubject[s]=u.perSubject[s]||{selected:new Set(),keyConcepts:""};}
+  renderThemeTabs(); renderUnitBody();
+}
+function stdId(subj,grade,kind,j){return `${subj}::${grade}::${kind}::${j}`;}
+
+function renderSubjectCards(){
+  const u=state.units[state.activeTheme];
+  const wrap=document.getElementById("subjCards");
+  if(!u.subjects.length){wrap.innerHTML="";return;}
+  wrap.innerHTML=u.subjects.map(subj=>{
+    const ps=u.perSubject[subj]||(u.perSubject[subj]={selected:new Set(),keyConcepts:""});
+    const gradeBlocks=grades().map(g=>{
+      const {comp,content}=standardsFor(subj,g);
+      const head=state.setup.split?`<div class="grade-band">Grade ${g}</div>`:"";
+      if(!comp.length&&!content.length) return head+`<div class="empty-note">No standards listed for Grade ${g}.</div>`;
+      return head+renderStdGroup("Curricular competencies",comp,subj,g,"comp",ps)
+                 +renderStdGroup("Content",content,subj,g,"content",ps);
+    }).join("");
+    return `<div class="subj-card">
+      <h4>${esc(subj)} <span class="count" data-cnt="${esc(subj)}">${ps.selected.size} selected</span></h4>
+      <div class="subj-body">
+        ${gradeBlocks}
+        <label class="fld keyc"><span class="lab">Key concepts <span class="hint">for ${esc(subj)} in this unit — e.g. connection, causation, perspective</span></span>
+          <input type="text" data-kc="${esc(subj)}" value="${esc(ps.keyConcepts)}"></label>
+      </div></div>`;
+  }).join("");
+
+  // wire elaboration toggles
+  wrap.querySelectorAll(".exp").forEach(b=>b.onclick=()=>{
+    const el=document.getElementById(b.dataset.target); el.classList.toggle("open");
+    b.textContent=el.classList.contains("open")?"hide notes":"notes";
+  });
+  // wire checkboxes
+  wrap.querySelectorAll('input[type=checkbox][data-id]').forEach(cb=>cb.onchange=()=>{
+    const [subj]=cb.dataset.id.split("::");
+    const ps=u.perSubject[subj];
+    if(cb.checked)ps.selected.add(cb.dataset.id);else ps.selected.delete(cb.dataset.id);
+    const cnt=wrap.querySelector(`.count[data-cnt="${cssEsc(subj)}"]`);
+    if(cnt)cnt.textContent=`${ps.selected.size} selected`;
+    renderThemeTabs();
+  });
+  // wire key concepts
+  wrap.querySelectorAll('input[data-kc]').forEach(inp=>inp.oninput=()=>{
+    u.perSubject[inp.dataset.kc].keyConcepts=inp.value;
+  });
+}
+function renderStdGroup(title,items,subj,grade,kind,ps){
+  if(!items.length)return "";
+  // sub-group by .group
+  const groups=[]; const map=new Map();
+  items.forEach((it,j)=>{const key=it.group||"";if(!map.has(key)){map.set(key,[]);groups.push(key);}map.get(key).push([it,j]);});
+  let html=`<div class="std-group">${title}</div>`;
+  groups.forEach(gk=>{
+    if(gk)html+=`<div style="font-size:12.5px;color:var(--ink-soft);margin:8px 0 2px">${esc(gk)}</div>`;
+    map.get(gk).forEach(([it,j])=>{
+      const id=stdId(subj,grade,kind,j), eid="e_"+cssId(id);
+      const hasElab=it.elaborations&&Object.keys(it.elaborations).length;
+      html+=`<div class="std">
+        <div class="std-row">
+          <input type="checkbox" data-id="${id}" ${ps.selected.has(id)?"checked":""} aria-label="${esc(it.text)}">
+          <span class="txt">${esc(it.text)}</span>
+          ${hasElab?`<button class="exp" data-target="${eid}">notes</button>`:""}
+        </div>
+        ${hasElab?`<dl class="elab" id="${eid}">${Object.entries(it.elaborations).map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`:""}
+      </div>`;
+    });
+  });
+  return html;
+}
+
+/* ===================================================================== *
+ * Step 3 — Schedule
+ * ===================================================================== */
+function scheduleStep(){
+  main.innerHTML=`
+   <div class="step-head"><h2>Order &amp; schedule</h2>
+     <p>Arrange the units across the year and set each one's length. Dates are calculated from your school-year start.</p></div>
+   <div id="schedList"></div>
+   <div id="schedMeter"></div>`;
+  renderSchedule();
+}
+function renderSchedule(){
+  const sc=schedule();
+  document.getElementById("schedList").innerHTML=sc.rows.map((r,pos)=>{
+    const t=THEMES[r.idx];
+    return `<div class="sched-row" style="border-left-color:${t.color}">
+      <div class="mv">
+        <button data-up="${pos}" ${pos===0?"disabled":""} aria-label="Move up">▲</button>
+        <button data-down="${pos}" ${pos===sc.rows.length-1?"disabled":""} aria-label="Move down">▼</button>
+      </div>
+      <div class="nm">${pos+1}. ${t.name}<small>${unitSummary(r.idx)}</small></div>
+      <div class="dur"><input type="number" min="1" max="40" value="${r.weeks}" data-dur="${r.idx}"> weeks</div>
+      <div class="dates">${nice(r.start)} – ${nice(r.end)}</div>
+    </div>`;
+  }).join("");
+  const m=document.getElementById("schedMeter");
+  const availR=Math.floor(sc.avail);
+  m.innerHTML=`<div class="meter">Planned: <strong>${sc.total}</strong> weeks · School year: <strong>~${availR}</strong> weeks available.</div>
+    ${sc.over
+      ? `<div class="banner">Your units total ${sc.total} weeks, which is longer than the ~${availR}-week school year. Reduce some durations (or shorten the year) — export stays locked until this fits.</div>`
+      : `<div class="banner ok">This fits inside the school year. You're ready to generate the plan.</div>`}`;
+  document.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>move(+b.dataset.up,-1));
+  document.querySelectorAll("[data-down]").forEach(b=>b.onclick=()=>move(+b.dataset.down,1));
+  document.querySelectorAll("[data-dur]").forEach(inp=>inp.onchange=()=>{
+    state.durations[+inp.dataset.dur]=Math.max(1,+inp.value||1); renderSchedule(); renderRail(); renderActions();
+  });
+}
+function unitSummary(idx){const u=state.units[idx];const s=u.subjects.length?u.subjects.join(", "):"no subjects yet";return s;}
+function move(pos,dir){const j=pos+dir;if(j<0||j>=state.order.length)return;
+  [state.order[pos],state.order[j]]=[state.order[j],state.order[pos]];renderSchedule();}
+
+/* ===================================================================== *
+ * Step 4 — Export
+ * ===================================================================== */
+function exportStep(){
+  const sc=schedule();
+  main.innerHTML=`
+   <div class="step-head"><h2>Generate &amp; export</h2>
+     <p>Review the year at a glance, then generate a formatted workbook. Open it in Google Sheets via Drive, or File → Import.</p></div>
+   <div class="card">
+     <table class="ov-table"><thead><tr><th>#</th><th>Theme</th><th>Dates</th><th>Weeks</th><th>Subjects</th></tr></thead>
+     <tbody>${sc.rows.map((r,p)=>{const t=THEMES[r.idx],u=state.units[r.idx];
+        return `<tr><td>${p+1}</td><td><span class="sw" style="background:${t.color}"></span>${t.name}</td>
+          <td>${nice(r.start)} – ${nice(r.end)}</td><td>${r.weeks}</td>
+          <td>${u.subjects.join(", ")||"—"}</td></tr>`;}).join("")}</tbody></table>
+   </div>
+   <p class="empty-note">The button below builds a styled <strong>.xlsx</strong> — bold headings, theme-coloured tabs, borders, and wrapped elaborations — with a Year Overview tab plus one tab per unit. It imports cleanly into Google Sheets (Drive ▸ open, or File ▸ Import). Use the <em>Generate</em> button in the bar below.</p>`;
+}
+
+/* ===================================================================== *
+ * Workbook generation (xlsx-js-style — styled)
+ * ===================================================================== */
+function generate(){
+  const sc=schedule(); if(sc.over||!sc.validDates)return;
+  if(typeof XLSX==="undefined"||!XLSX.utils){
+    document.getElementById("actionMsg").textContent="Spreadsheet library still loading — try again.";return;}
+  const wb=XLSX.utils.book_new();
+  const SEP="────────────────────────────────────────";
+
+  // Sheet 1 — overview
+  const ov=[
+    [xc("BC Elementary IB PYP — Year Plan",STY.ovTitle)],
+    [xc(`Grade ${grades().join(" / ")}    ·    ${niceFull(parseISO(state.setup.start))} – ${niceFull(parseISO(state.setup.end))}`,STY.ovSub)],
+    [],
+    [xc("Unit",STY.ovHead),xc("Transdisciplinary Theme",STY.ovHead),xc("Dates",STY.ovHead),xc("Weeks",STY.ovHead),xc("Subjects",STY.ovHead)]
+  ];
+  sc.rows.forEach((r,p)=>{const u=state.units[r.idx];
+    ov.push([xn(p+1,STY.ovCell),xc(THEMES[r.idx].name,themeCell(THEME_HEX[r.idx])),
+             xc(`${nice(r.start)} – ${nice(r.end)}`,STY.ovCell),xn(r.weeks,STY.ovCell),
+             xc(u.subjects.join(", "),STY.ovCell)]);});
+  const ovWs=XLSX.utils.aoa_to_sheet(ov);
+  ovWs["!cols"]=[{wch:6},{wch:36},{wch:20},{wch:8},{wch:46}];
+  ovWs["!merges"]=[{s:{r:0,c:0},e:{r:0,c:4}},{s:{r:1,c:0},e:{r:1,c:4}}];
+  ovWs["!rows"]=[{hpt:20},{hpt:16}];
+  XLSX.utils.book_append_sheet(wb,ovWs,"Year Overview");
+
+  // Sheets 2–7 — per unit
+  sc.rows.forEach((r,p)=>{
+    const u=state.units[r.idx], t=THEMES[r.idx], hex=THEME_HEX[r.idx], rows=[];
+    rows.push([xc(`Unit ${p+1} — ${t.name}`,themeBand(hex))]);
+    rows.push([xc(`Dates: ${nice(r.start)} – ${nice(r.end)}     |     Duration: ${r.weeks} weeks`,STY.meta)]);
+    rows.push([xc(`Central Idea: ${u.centralIdea||"—"}`,STY.central)]);
+    rows.push([xc(SEP,STY.sep)]);
+    u.subjects.forEach(subj=>{
+      const ps=u.perSubject[subj]||{selected:new Set(),keyConcepts:""};
+      rows.push([]); rows.push([xc(subj,STY.subject)]);
+      if(ps.keyConcepts.trim())rows.push([xc(`Key Concepts: ${ps.keyConcepts.trim()}`,STY.keyc)]);
+      const sel=collectSelected(subj,ps);
+      if(sel.comp.length){rows.push([xc("Curricular Competencies",STY.label)]);
+        sel.comp.forEach(it=>{rows.push([xc(`   •  ${it.text}`,STY.bullet)]); elabLines(it).forEach(l=>rows.push([xc(`         ${l}`,STY.elab)]));});}
+      if(sel.content.length){rows.push([xc("Content",STY.label)]);
+        sel.content.forEach(it=>{rows.push([xc(`   •  ${it.text}`,STY.bullet)]); elabLines(it).forEach(l=>rows.push([xc(`         ${l}`,STY.elab)]));});}
+      if(!sel.comp.length&&!sel.content.length)rows.push([xc("(no standards selected)",STY.elab)]);
+    });
+    rows.push([]); rows.push([xc(SEP,STY.sep)]);
+    rows.push([xc("Assessment",STY.label)]); rows.push([xc(u.assessment||"—",STY.bullet)]);
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"]=[{wch:98}];
+    ws["!rows"]=[{hpt:22}];
+    XLSX.utils.book_append_sheet(wb,ws,sheetName(p+1,t.name));
+  });
+
+  XLSX.writeFile(wb,`PYP_Year_Plan_Grade_${grades().join("-")}.xlsx`);
+  document.getElementById("actionMsg").textContent="Workbook downloaded ✓";
+}
+function collectSelected(subj,ps){
+  const out={comp:[],content:[]};
+  grades().forEach(g=>{
+    const {comp,content}=standardsFor(subj,g);
+    comp.forEach((it,j)=>{if(ps.selected.has(stdId(subj,g,"comp",j)))out.comp.push(state.setup.split?{...it,text:`[G${g}] ${it.text}`}:it);});
+    content.forEach((it,j)=>{if(ps.selected.has(stdId(subj,g,"content",j)))out.content.push(state.setup.split?{...it,text:`[G${g}] ${it.text}`}:it);});
+  });
+  return out;
+}
+function elabLines(it){return it.elaborations?Object.entries(it.elaborations).map(([k,v])=>`${k}: ${v}`):[];}
+function sheetName(n,name){return `${n}. ${name}`.replace(/[\\\/\?\*\[\]:]/g,"").slice(0,31);}
+
+/* ===================================================================== *
+ * Data loading — auto-fetch on load, manual picker as fallback/override
+ * ===================================================================== */
+function applyData(data,label,isSample){
+  state.data=data; state.dataLabel=label;
+  state.units=THEMES.map(()=>({subjects:[],perSubject:{},centralIdea:"",assessment:""}));
+  state.order=[0,1,2,3,4,5]; state.durations={}; state.activeTheme=0;
+  const chip=document.getElementById("dataChip");
+  chip.classList.toggle("sample",!!isSample);
+  document.getElementById("dataLabel").textContent=label;
+}
+document.getElementById("loadBtn").onclick=()=>document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange=e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const j=JSON.parse(rd.result);
+      if(!j.subjects||typeof j.subjects!=="object")throw new Error("missing 'subjects'");
+      applyData(j,f.name,false); render();
+    }catch(err){alert("That file doesn't look like a curriculum database.\n\n"+err.message);}
+  };
+  rd.readAsText(f);
+};
+
+/* ===================================================================== *
+ * Utils
+ * ===================================================================== */
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function cssId(s){return s.replace(/[^a-zA-Z0-9]/g,"_");}
+function cssEsc(s){return s.replace(/"/g,'\\"');}
+
+/* ===================================================================== *
+ * Boot: try the hosted database first, fall back to the bundled sample.
+ * (fetch() of a local file:// path is blocked by browsers, so a
+ *  double-clicked copy lands on the sample and the picker still works.)
+ * ===================================================================== */
+async function boot(){
+  try{
+    const res=await fetch("bc_curriculum.json",{cache:"no-cache"});
+    if(res.ok){
+      const j=await res.json();
+      if(j&&j.subjects&&typeof j.subjects==="object"){
+        applyData(j,"bc_curriculum.json",false); render(); return;
+      }
+    }
+  }catch(e){ /* missing file or file:// — use the sample */ }
+  applyData(SAMPLE,"Sample data",true); render();
+}
+boot();
+</script>
+</body>
+</html>
