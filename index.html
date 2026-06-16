@@ -95,23 +95,50 @@
     font-size:13.5px;color:var(--ink);transition:background .12s,border-color .12s}
   .chip[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
 
-  /* ---- standards ---- */
+  /* ---- standards (collapsible) ---- */
   .subj-card{border:1px solid var(--line);border-radius:var(--r);margin-top:14px;overflow:hidden}
-  .subj-card>h4{margin:0;padding:13px 16px;background:var(--line-soft);font-size:15px;
-    display:flex;justify-content:space-between;align-items:center}
-  .subj-card>h4 .count{font-size:12px;color:var(--ink-soft);font-weight:500}
-  .subj-body{padding:6px 16px 16px}
+  .subj-head{width:100%;margin:0;padding:13px 16px;background:var(--line-soft);font-size:15px;
+    display:flex;align-items:center;gap:10px;border:none;text-align:left;color:var(--ink)}
+  .subj-head:hover{background:#e7eae5}
+  .subj-head .subj-name{font-weight:680;flex:1}
+  .subj-head .count{font-size:12px;color:var(--ink-soft);font-weight:500}
+  .chev{flex:none;width:13px;color:var(--ink-soft);font-size:10px}
+  .subj-body{padding:4px 16px 16px}
   .grade-band{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
-    color:var(--ink-soft);margin:16px 0 4px;border-bottom:1px solid var(--line-soft);padding-bottom:5px}
-  .std-group{font-size:12.5px;font-weight:680;color:var(--accent-ink);margin:13px 0 3px}
+    color:var(--ink-soft);margin:14px 0 6px;border-bottom:1px solid var(--line-soft);padding-bottom:5px}
+
+  /* section: competencies vs content */
+  .std-section{border:1px solid var(--line);border-radius:var(--r-sm);margin-top:10px;overflow:hidden;
+    border-left-width:3px}
+  .std-section.comp{border-left-color:var(--accent)}
+  .std-section.content{border-left-color:var(--t4)}
+  .sec-head{width:100%;border:none;background:#fbfcfb;display:flex;align-items:center;gap:9px;
+    padding:9px 12px;text-align:left;color:var(--ink)}
+  .sec-head:hover{background:#f1f3f0}
+  .sec-head .sec-title{flex:1;font-size:13px;font-weight:680;letter-spacing:.01em}
+  .std-section.comp .sec-head .sec-title{color:var(--accent-ink)}
+  .std-section.content .sec-head .sec-title{color:#2f5588}
+  .sec-head .sec-count{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+  .sec-body{padding:2px 12px 8px}
+
+  /* group / theme within a section */
+  .std-grp{margin-top:4px}
+  .grp-head{width:100%;border:none;background:none;display:flex;align-items:center;gap:8px;
+    padding:6px 2px;text-align:left}
+  .grp-head .grp-name{flex:1;font-size:12.5px;font-weight:620;color:var(--ink)}
+  .grp-head:hover .grp-name{color:#000}
+  .grp-head .grp-count{font-size:11.5px;color:var(--accent)}
+  .grp-body{padding-left:4px}
+
   .std{border-bottom:1px solid var(--line-soft)}
+  .std:last-child{border-bottom:none}
   .std-row{display:flex;gap:10px;align-items:flex-start;padding:8px 0}
   .std-row input{margin-top:3px;width:auto;flex:none}
   .std-row .txt{flex:1;font-size:14px}
   .std-row .exp{flex:none;background:none;border:none;color:var(--ink-soft);font-size:12px;
     padding:2px 5px;border-radius:5px}
   .std-row .exp:hover{background:var(--line-soft)}
-  .elab{display:none;padding:0 0 9px 32px;font-size:13px;color:var(--ink-soft)}
+  .elab{display:none;padding:0 0 9px 30px;font-size:13px;color:var(--ink-soft)}
   .elab.open{display:block}
   .elab dt{font-style:italic;color:var(--ink);font-weight:600}
   .elab dd{margin:0 0 6px}
@@ -273,6 +300,7 @@ const state = {
   units:THEMES.map(()=>({ subjects:[], perSubject:{}, centralIdea:"", assessment:"" })),
   order:[0,1,2,3,4,5],
   durations:{}, // themeIndex -> weeks
+  ui:{collapsed:{}}, // collapse state keyed by node (card/section/group)
 };
 
 /* ===================================================================== *
@@ -427,7 +455,7 @@ function renderUnitBody(){
   const body=document.getElementById("unitBody");
   body.innerHTML=`
    <div class="card spine" style="border-left-color:${t.color}">
-     <div class="step-head"><h2 style="font-size:18px">Unit ${i+1} — ${t.name}</h2></div>
+     <div class="step-head"><h2 style="font-size:18px">${t.name}</h2></div>
      <div style="margin-top:14px"><div class="lab" style="font-size:13px;font-weight:620;margin-bottom:8px">Subjects in this unit</div>
        <div class="chips" id="subjChips">
          ${subjects.map(s=>`<button class="chip" data-s="${esc(s)}" aria-pressed="${u.subjects.includes(s)}">${esc(s)}</button>`).join("")
@@ -452,10 +480,26 @@ function renderUnitBody(){
 function toggleSubject(s){
   const u=state.units[state.activeTheme];
   if(u.subjects.includes(s)){u.subjects=u.subjects.filter(x=>x!==s);}
-  else{u.subjects.push(s); u.perSubject[s]=u.perSubject[s]||{selected:new Set(),keyConcepts:""};}
+  else{
+    u.subjects.push(s);
+    u.perSubject[s]=u.perSubject[s]||{selected:new Set(),keyConcepts:""};
+    state.ui.collapsed[kCard(s)]=true;   // newly added subjects start collapsed
+  }
   renderThemeTabs(); renderUnitBody();
 }
 function stdId(subj,grade,kind,j){return `${subj}::${grade}::${kind}::${j}`;}
+
+/* ---- collapse helpers ---- */
+function kCard(subj){return `card::${state.activeTheme}::${subj}`;}
+function kSec(subj,g,kind){return `sec::${state.activeTheme}::${subj}::${g}::${kind}`;}
+function kGrp(subj,g,kind,gk){return `grp::${state.activeTheme}::${subj}::${g}::${kind}::${gk}`;}
+function isCollapsed(key,def){const v=state.ui.collapsed[key];return v===undefined?def:v;}
+function setCollapsed(key,val){state.ui.collapsed[key]=val;}
+function groupize(items){
+  const order=[],map=new Map();
+  items.forEach((it,j)=>{const k=it.group||"";if(!map.has(k)){map.set(k,[]);order.push(k);}map.get(k).push([it,j]);});
+  return order.map(k=>({key:k,members:map.get(k)}));
+}
 
 function renderSubjectCards(){
   const u=state.units[state.activeTheme];
@@ -463,63 +507,122 @@ function renderSubjectCards(){
   if(!u.subjects.length){wrap.innerHTML="";return;}
   wrap.innerHTML=u.subjects.map(subj=>{
     const ps=u.perSubject[subj]||(u.perSubject[subj]={selected:new Set(),keyConcepts:""});
+    const cardKey=kCard(subj), cardCol=isCollapsed(cardKey,true);   // collapsed by default
     const gradeBlocks=grades().map(g=>{
       const {comp,content}=standardsFor(subj,g);
       const head=state.setup.split?`<div class="grade-band">Grade ${g}</div>`:"";
       if(!comp.length&&!content.length) return head+`<div class="empty-note">No standards listed for Grade ${g}.</div>`;
-      return head+renderStdGroup("Curricular competencies",comp,subj,g,"comp",ps)
-                 +renderStdGroup("Content",content,subj,g,"content",ps);
+      return head+renderSection("Curricular competencies","comp",comp,subj,g,ps)
+                 +renderSection("Content","content",content,subj,g,ps);
     }).join("");
     return `<div class="subj-card">
-      <h4>${esc(subj)} <span class="count" data-cnt="${esc(subj)}">${ps.selected.size} selected</span></h4>
-      <div class="subj-body">
+      <button class="subj-head" type="button" data-collapse="${esc(cardKey)}" data-def="1">
+        <span class="chev" id="v_${cssId(cardKey)}">${cardCol?"▸":"▾"}</span>
+        <span class="subj-name">${esc(subj)}</span>
+        <span class="count" id="c_${cssId(cardKey)}">${ps.selected.size} selected</span>
+      </button>
+      <div class="subj-body" id="b_${cssId(cardKey)}" ${cardCol?"hidden":""}>
         ${gradeBlocks}
         <label class="fld keyc"><span class="lab">Key concepts <span class="hint">for ${esc(subj)} in this unit — e.g. connection, causation, perspective</span></span>
           <input type="text" data-kc="${esc(subj)}" value="${esc(ps.keyConcepts)}"></label>
       </div></div>`;
   }).join("");
 
-  // wire elaboration toggles
+  wireSubjectCards(wrap,u);
+}
+
+function renderSection(title,kind,items,subj,g,ps){
+  if(!items.length)return "";
+  const secKey=kSec(subj,g,kind), col=isCollapsed(secKey,false);  // expanded by default
+  let sel=0; items.forEach((it,j)=>{if(ps.selected.has(stdId(subj,g,kind,j)))sel++;});
+  let body="";
+  groupize(items).forEach(grp=>{
+    if(grp.key){
+      // named "theme" -> its own collapsible group
+      const grpKey=kGrp(subj,g,kind,grp.key), gcol=isCollapsed(grpKey,false);
+      let gsel=0; grp.members.forEach(([it,j])=>{if(ps.selected.has(stdId(subj,g,kind,j)))gsel++;});
+      const rows=grp.members.map(([it,j])=>stdRow(it,j,subj,g,kind,ps)).join("");
+      body+=`<div class="std-grp">
+        <button class="grp-head" type="button" data-collapse="${esc(grpKey)}" data-def="0">
+          <span class="chev" id="v_${cssId(grpKey)}">${gcol?"▸":"▾"}</span>
+          <span class="grp-name">${esc(grp.key)}</span>
+          <span class="grp-count" id="c_${cssId(grpKey)}">${gsel?gsel+" selected":""}</span>
+        </button>
+        <div class="grp-body" id="b_${cssId(grpKey)}" ${gcol?"hidden":""}>${rows}</div>
+      </div>`;
+    }else{
+      // ungrouped items sit directly under the section
+      body+=grp.members.map(([it,j])=>stdRow(it,j,subj,g,kind,ps)).join("");
+    }
+  });
+  return `<div class="std-section ${kind}">
+    <button class="sec-head" type="button" data-collapse="${esc(secKey)}" data-def="0">
+      <span class="chev" id="v_${cssId(secKey)}">${col?"▸":"▾"}</span>
+      <span class="sec-title">${title}</span>
+      <span class="sec-count" id="c_${cssId(secKey)}">${sel}/${items.length}</span>
+    </button>
+    <div class="sec-body" id="b_${cssId(secKey)}" ${col?"hidden":""}>${body}</div>
+  </div>`;
+}
+
+function stdRow(it,j,subj,g,kind,ps){
+  const id=stdId(subj,g,kind,j), eid="e_"+cssId(id);
+  const hasElab=it.elaborations&&Object.keys(it.elaborations).length;
+  return `<div class="std">
+    <div class="std-row">
+      <input type="checkbox" data-id="${id}" ${ps.selected.has(id)?"checked":""} aria-label="${esc(it.text)}">
+      <span class="txt">${esc(it.text)}</span>
+      ${hasElab?`<button class="exp" type="button" data-target="${eid}">notes</button>`:""}
+    </div>
+    ${hasElab?`<dl class="elab" id="${eid}">${Object.entries(it.elaborations).map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`:""}
+  </div>`;
+}
+
+function wireSubjectCards(wrap,u){
+  // collapse toggles (subject card / section / group) — DOM-only, preserves other state
+  wrap.querySelectorAll("[data-collapse]").forEach(btn=>btn.onclick=()=>{
+    const key=btn.dataset.collapse, def=btn.dataset.def==="1";
+    const now=!isCollapsed(key,def); setCollapsed(key,now);
+    const body=document.getElementById("b_"+cssId(key));
+    const chev=document.getElementById("v_"+cssId(key));
+    if(body)body.hidden=now;
+    if(chev)chev.textContent=now?"▸":"▾";
+  });
+  // elaboration notes
   wrap.querySelectorAll(".exp").forEach(b=>b.onclick=()=>{
     const el=document.getElementById(b.dataset.target); el.classList.toggle("open");
     b.textContent=el.classList.contains("open")?"hide notes":"notes";
   });
-  // wire checkboxes
+  // checkboxes — update counts in place at every level
   wrap.querySelectorAll('input[type=checkbox][data-id]').forEach(cb=>cb.onchange=()=>{
-    const [subj]=cb.dataset.id.split("::");
+    const subj=cb.dataset.id.split("::")[0];
     const ps=u.perSubject[subj];
     if(cb.checked)ps.selected.add(cb.dataset.id);else ps.selected.delete(cb.dataset.id);
-    const cnt=wrap.querySelector(`.count[data-cnt="${cssEsc(subj)}"]`);
-    if(cnt)cnt.textContent=`${ps.selected.size} selected`;
+    refreshCounts(subj,ps);
     renderThemeTabs();
   });
-  // wire key concepts
+  // key concepts
   wrap.querySelectorAll('input[data-kc]').forEach(inp=>inp.oninput=()=>{
     u.perSubject[inp.dataset.kc].keyConcepts=inp.value;
   });
 }
-function renderStdGroup(title,items,subj,grade,kind,ps){
-  if(!items.length)return "";
-  // sub-group by .group
-  const groups=[]; const map=new Map();
-  items.forEach((it,j)=>{const key=it.group||"";if(!map.has(key)){map.set(key,[]);groups.push(key);}map.get(key).push([it,j]);});
-  let html=`<div class="std-group">${title}</div>`;
-  groups.forEach(gk=>{
-    if(gk)html+=`<div style="font-size:12.5px;color:var(--ink-soft);margin:8px 0 2px">${esc(gk)}</div>`;
-    map.get(gk).forEach(([it,j])=>{
-      const id=stdId(subj,grade,kind,j), eid="e_"+cssId(id);
-      const hasElab=it.elaborations&&Object.keys(it.elaborations).length;
-      html+=`<div class="std">
-        <div class="std-row">
-          <input type="checkbox" data-id="${id}" ${ps.selected.has(id)?"checked":""} aria-label="${esc(it.text)}">
-          <span class="txt">${esc(it.text)}</span>
-          ${hasElab?`<button class="exp" data-target="${eid}">notes</button>`:""}
-        </div>
-        ${hasElab?`<dl class="elab" id="${eid}">${Object.entries(it.elaborations).map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`:""}
-      </div>`;
+
+function refreshCounts(subj,ps){
+  const set=(id,txt)=>{const el=document.getElementById(id);if(el)el.textContent=txt;};
+  set("c_"+cssId(kCard(subj)),`${ps.selected.size} selected`);
+  grades().forEach(g=>{
+    ["comp","content"].forEach(kind=>{
+      const {comp,content}=standardsFor(subj,g);
+      const items=kind==="comp"?comp:content;
+      let sel=0; items.forEach((it,j)=>{if(ps.selected.has(stdId(subj,g,kind,j)))sel++;});
+      set("c_"+cssId(kSec(subj,g,kind)),`${sel}/${items.length}`);
+      groupize(items).forEach(grp=>{
+        if(!grp.key)return;
+        let gsel=0; grp.members.forEach(([it,j])=>{if(ps.selected.has(stdId(subj,g,kind,j)))gsel++;});
+        set("c_"+cssId(kGrp(subj,g,kind,grp.key)),gsel?gsel+" selected":"");
+      });
     });
   });
-  return html;
 }
 
 /* ===================================================================== *
@@ -656,6 +759,7 @@ function applyData(data,label,isSample){
   state.data=data; state.dataLabel=label;
   state.units=THEMES.map(()=>({subjects:[],perSubject:{},centralIdea:"",assessment:""}));
   state.order=[0,1,2,3,4,5]; state.durations={}; state.activeTheme=0;
+  state.ui={collapsed:{}};
   const chip=document.getElementById("dataChip");
   chip.classList.toggle("sample",!!isSample);
   document.getElementById("dataLabel").textContent=label;
