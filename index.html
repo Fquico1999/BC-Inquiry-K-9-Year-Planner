@@ -151,21 +151,58 @@
   .sched-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:14px;align-items:center;
     padding:13px 14px;border:1px solid var(--line);border-radius:var(--r);margin-top:10px;
     border-left-width:4px}
-  .sched-row .mv{display:flex;flex-direction:column;gap:3px}
-  .sched-row .mv button{width:24px;height:20px;border:1px solid var(--line);background:#fff;
-    border-radius:5px;line-height:1;font-size:11px;color:var(--ink-soft)}
-  .sched-row .mv button:disabled{opacity:.3;cursor:default}
-  .sched-row .nm{font-weight:620}
-  .sched-row .nm small{display:block;font-weight:400;color:var(--ink-soft);font-size:12px}
-  .sched-row .dur{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-soft)}
-  .sched-row .dur input{width:62px}
-  .sched-row .dates{font-size:13px;color:var(--ink-soft);text-align:right;min-width:128px}
-  @media (max-width:620px){.sched-row{grid-template-columns:auto 1fr;row-gap:8px}
-    .sched-row .dates{grid-column:1/3;text-align:left}.sched-row .dur{grid-column:1/3}}
+  .sched-row .drag-handle{cursor:grab;color:var(--ink-soft);font-size:18px;line-height:1;
+    user-select:none;touch-action:none;padding:6px 3px;border-radius:6px;align-self:center}
+  .sched-row .drag-handle:hover{background:var(--line-soft);color:var(--ink)}
+  .sched-row.dragging{opacity:.55;border-style:dashed;background:var(--line-soft)}
+  .sched-row.dragging .drag-handle{cursor:grabbing}
+  .sched-row .nm{font-weight:620;min-width:0}
+  .sched-row .nm small{display:block;font-weight:400;color:var(--ink-soft);font-size:12px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  @media (max-width:620px){.sched-row{grid-template-columns:auto 1fr;row-gap:8px}}
   .meter{margin-top:18px;font-size:14px}
   .banner{border-radius:var(--r);padding:13px 16px;margin-top:14px;font-size:14px;
     border:1px solid var(--warn-line);background:var(--warn-bg);color:var(--warn-ink)}
   .banner.ok{border-color:#bcd9c4;background:#eaf4ec;color:#2c6e49}
+
+  /* ---- schedule: per-unit dates + week badge ---- */
+  .sched-row .udates{display:flex;align-items:center;gap:6px}
+  .sched-row .udates input[type=date]{width:142px;font-size:13px;padding:7px 9px}
+  .sched-row .udates .dash{color:var(--ink-soft)}
+  .sched-row .udates .reset-dates{border:1px solid var(--line);background:#fff;color:var(--ink-soft);
+    border-radius:6px;font-size:11px;padding:3px 8px}
+  .sched-row .udates .reset-dates:hover{background:var(--line-soft)}
+  .sched-row .wk-cell{display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;
+    gap:4px;min-height:42px;min-width:140px;text-align:right}
+  .wk-badge{display:inline-block;font-size:12.5px;font-weight:620;color:var(--accent-ink);
+    background:#e7f1ee;border:1px solid #bcd9c4;border-radius:999px;padding:3px 10px;white-space:nowrap}
+  .wk-badge.none{color:var(--warn-ink);background:var(--warn-bg);border-color:var(--warn-line);font-weight:500}
+  .wk-sub{display:block;font-size:11px;color:var(--ink-soft);line-height:1.3}
+  .row-warn{font-size:11.5px;color:var(--warn-ink)}
+  @media (max-width:620px){.sched-row .udates,.sched-row .wk-cell{grid-column:1/3}
+    .sched-row .wk-cell{align-items:flex-start;text-align:left}}
+
+  /* ---- breaks in Plan setup ---- */
+  .breaks-block .break-row{display:grid;grid-template-columns:1fr auto auto auto auto;gap:9px;
+    align-items:center;margin-bottom:9px}
+  .breaks-block .break-row .bk-name{min-width:0}
+  .breaks-block .break-row input[type=date]{width:152px}
+  .breaks-block .break-row .dash{color:var(--ink-soft)}
+  .breaks-block .bk-del{border:1px solid var(--line);background:#fff;color:var(--warn-ink);
+    border-radius:6px;width:32px;height:36px;font-size:13px}
+  .breaks-block .bk-del:hover{background:var(--warn-bg)}
+  .btn.add-break{padding:8px 14px;font-size:13px;border-radius:var(--r-sm)}
+  @media (max-width:560px){.breaks-block .break-row{grid-template-columns:1fr 1fr auto}
+    .breaks-block .break-row .bk-name{grid-column:1/3}.breaks-block .break-row .dash{display:none}}
+
+  /* ---- break reference on schedule step ---- */
+  .break-ref{margin-top:16px;display:flex;flex-wrap:wrap;gap:9px;align-items:center;font-size:13px;color:var(--ink-soft)}
+  .break-ref .br-head{font-weight:620}
+  .br-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);
+    background:#fff;border:1px dashed var(--line);border-radius:999px;padding:4px 10px}
+  .br-chip.bad{border-color:var(--warn-line);color:var(--warn-ink)}
+  .br-dot{width:7px;height:7px;border-radius:50%;background:#8a8f98}
+  .linklike{background:none;border:none;color:var(--accent);font-size:inherit;padding:0;text-decoration:underline;cursor:pointer}
 
   /* ---- export ---- */
   .ov-table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px}
@@ -294,6 +331,9 @@ const STY={
 };
 const themeBand=hex=>({font:{bold:true,sz:14,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:hex}},alignment:{vertical:"center"}});
 const themeCell=hex=>({font:{bold:true,sz:11,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:hex}},alignment:{vertical:"center"},border:thinB("E3E6E0")});
+STY.ovBreakHead={font:{bold:true,sz:11,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:"8A8F98"}},alignment:{vertical:"center"},border:thinB("D9DCD6")};
+STY.ovBreakCell={font:{italic:true,sz:11,color:{rgb:"5A6675"}},alignment:{vertical:"top"},border:thinB("E3E6E0")};
+STY.breakNote={font:{italic:true,sz:11,color:{rgb:"8A4B16"}}};
 
 const state = {
   data:SAMPLE, dataLabel:"Sample data",
@@ -301,7 +341,10 @@ const state = {
   setup:{ start:isoDefault("start"), end:isoDefault("end"), split:false, grade:"3", grade2:"4", defaultWeeks:6 },
   units:THEMES.map(()=>({ subjects:[], perSubject:{}, centralIdea:"", assessment:"" })),
   order:[0,1,2,3,4,5],
-  durations:{}, // themeIndex -> weeks
+  durations:{}, // themeIndex -> weeks (legacy; seeding now uses defaultWeeks)
+  unitDates:{}, // themeIndex -> {start,end} ISO — manual override; absent = auto-seeded
+  breaks:[],    // [{id,name,start,end}]
+  breakSeq:0,
   ui:{collapsed:{}}, // collapse state keyed by node (card/section/group)
 };
 
@@ -315,6 +358,14 @@ function isoDefault(which){const y=new Date().getFullYear();return which==="star
 function parseISO(s){const[a,b,c]=s.split("-").map(Number);return new Date(a,b-1,c);}
 function nice(d){return d.toLocaleDateString("en-CA",{month:"short",day:"numeric"});}
 function niceFull(d){return d.toLocaleDateString("en-CA",{month:"long",day:"numeric"});}
+const DAY=864e5;
+function addDays(d,n){return new Date(d.getTime()+n*DAY);}
+function dayCount(a,b){return Math.round((b.getTime()-a.getTime())/DAY)+1;}        // inclusive span
+function overlapDays(s1,e1,s2,e2){                                                  // inclusive Date overlap
+  const lo=Math.max(s1.getTime(),s2.getTime()), hi=Math.min(e1.getTime(),e2.getTime());
+  return hi<lo?0:Math.round((hi-lo)/DAY)+1;
+}
+function fmtWeeks(days){const w=Math.round(days/7*10)/10;return Number.isInteger(w)?String(w):w.toFixed(1);}
 
 /* ===================================================================== *
  * Derived helpers
@@ -325,20 +376,72 @@ function standardsFor(subj,grade){
   const s=state.data.subjects[subj]; const g=s&&s.grades&&s.grades[grade];
   return {comp:(g&&g.curricular_competencies)||[], content:(g&&g.content)||[]};
 }
-function durationFor(idx){return state.durations[idx]!=null?state.durations[idx]:state.setup.defaultWeeks;}
 function unitStarted(idx){const u=state.units[idx];return u.subjects.length>0||u.centralIdea.trim()||u.assessment.trim();}
+function breakIntervals(){
+  return state.breaks
+    .filter(b=>b.start&&b.end)
+    .map(b=>({name:b.name||"Break", s:parseISO(b.start), e:parseISO(b.end)}))
+    .filter(b=>b.e>=b.s)
+    .sort((a,b)=>a.s-b.s);
+}
 
+/* Lay one unit starting at `start` for `durDays` calendar days, then extend the
+ * end so any break that falls *inside* the unit is given back as extra calendar
+ * time (teaching length is preserved). A break that overlaps the unit's start
+ * date is left alone (no extension), per the planning rule. */
+function seedEnd(start,durDays,brks){
+  let end=addDays(start,durDays-1);
+  for(let guard=0;guard<120;guard++){
+    let bd=0;
+    brks.forEach(b=>{
+      if(b.s.getTime()<=start.getTime() && start.getTime()<=b.e.getTime()) return; // covers the start → skip
+      bd+=overlapDays(start,end,b.s,b.e);
+    });
+    const want=addDays(start,durDays-1+bd);
+    if(want.getTime()>end.getTime()) end=want; else break;
+  }
+  return end;
+}
+
+/* The schedule shows only units started in step 2. Each unit's dates are
+ * pre-filled from the school-year start + default duration (flowing around
+ * breaks); a unit the teacher has dated by hand keeps those dates and the
+ * sequence continues after it. Duration in weeks is derived from the dates. */
 function schedule(){
-  const start=parseISO(state.setup.start), end=parseISO(state.setup.end);
-  const wk=7*864e5, avail=(end-start)/wk;
-  let cur=new Date(start); const rows=state.order.map(idx=>{
-    const w=Math.max(1,Math.round(durationFor(idx)));
-    const s=new Date(cur), e=new Date(cur.getTime()+w*wk-864e5);
-    cur=new Date(cur.getTime()+w*wk);
-    return {idx,weeks:w,start:s,end:e};
+  const ys=parseISO(state.setup.start), ye=parseISO(state.setup.end);
+  const validDates=ye>ys;
+  const brks=breakIntervals();
+  const durDays=Math.max(1,Math.round(state.setup.defaultWeeks*7));
+  const startedOrder=state.order.filter(unitStarted);
+  let cursor=new Date(ys);
+  const rows=startedOrder.map((idx,pos)=>{
+    const ov=state.unitDates[idx];
+    let s,e,manual=false;
+    if(ov&&ov.start&&ov.end){ s=parseISO(ov.start); e=parseISO(ov.end); manual=true; }
+    else{ s=new Date(cursor); e=seedEnd(s,durDays,brks); }
+    cursor=addDays(e,1);
+    const valid=e>=s;
+    const withinYear=valid&&s>=ys&&e<=ye;
+    const spanDays=valid?dayCount(s,e):0;
+    let breakDays=0; const overlaps=[];
+    if(valid)brks.forEach(b=>{const d=overlapDays(s,e,b.s,b.e);if(d>0){breakDays+=d;overlaps.push({name:b.name,days:d});}});
+    const teachingDays=Math.max(0,spanDays-breakDays);
+    return {idx,pos,start:s,end:e,manual,valid,withinYear,spanDays,breakDays,teachingDays,overlaps};
   });
-  const total=rows.reduce((a,r)=>a+r.weeks,0);
-  return {rows,total,avail,over:total>avail+1e-6,validDates:end>start};
+  const breaksOut=brks.map((b,i)=>({id:i,name:b.name,start:b.s,end:b.e,
+    days:dayCount(b.s,b.e),withinYear:b.s>=ys&&b.e<=ye}));
+  const issues=[];
+  rows.forEach(r=>{const nm=THEMES[r.idx].name;
+    if(!r.valid)issues.push(`“${nm}” ends before it starts.`);
+    else if(!r.withinYear)issues.push(`“${nm}” falls outside the school year.`);
+  });
+  const over=validDates&&rows.some(r=>r.valid&&r.end>ye);
+  const ready=validDates&&rows.length>0&&rows.every(r=>r.valid&&r.withinYear);
+  return {ys,ye,validDates,rows,breaks:breaksOut,issues,over,ready};
+}
+function effectiveDatesFor(idx){
+  const r=schedule().rows.find(r=>r.idx===idx);
+  return r?{start:iso(r.start),end:iso(r.end)}:{start:state.setup.start,end:state.setup.start};
 }
 
 /* ===================================================================== *
@@ -350,7 +453,7 @@ function render(){renderRail();renderStep();renderActions();}
 
 function renderRail(){
   const sc=schedule();
-  const reach=[true,true,true, sc.validDates&&!sc.over]; // step 4 gated
+  const reach=[true,true,true, sc.ready]; // step 4 gated
   document.getElementById("rail").innerHTML=STEPS.map((s,i)=>{
     const cls=[i===state.step?"active":"", i<state.step?"done":"", !reach[i]?"disabled":""].join(" ");
     return `<li class="${cls}" data-step="${i}"><span class="num"></span><span>${s}</span></li>`;
@@ -371,13 +474,15 @@ function renderActions(){
   const sc=schedule();
   if(state.step===3){
     next.textContent="Generate Year Plan (.xlsx)";
-    next.disabled=!(sc.validDates&&!sc.over);
+    next.disabled=!sc.ready;
     msg.textContent = !sc.validDates ? "Check your school-year dates."
-      : sc.over ? "Units exceed the school year — fix the schedule first." : "";
+      : !sc.rows.length ? "Start at least one unit in step 2."
+      : sc.issues.length ? sc.issues[0]
+      : "";
     next.onclick=generate;
   }else{
     next.textContent="Continue →"; next.disabled=false; msg.textContent="";
-    next.onclick=()=>{ if(state.step===2&&(sc.over||!sc.validDates)){state.step=2;render();return;} state.step++; render(); };
+    next.onclick=()=>{ if(state.step===2&&!sc.ready){state.step=2;render();return;} state.step++; render(); };
   }
   back.onclick=()=>{state.step=Math.max(0,state.step-1);render();};
 }
@@ -390,7 +495,7 @@ function setupStep(){
   const opts=g=>GRADE_ORDER.map(x=>`<option ${x===g?"selected":""}>${x}</option>`).join("");
   main.innerHTML=`
    <div class="step-head"><h2>Plan setup</h2>
-     <p>Set the school year, the grade you teach, and a default length for each unit. You can override any unit's length later.</p></div>
+     <p>Set the school year, the grade you teach, any breaks, and a default unit length. You’ll fine-tune each unit’s exact dates on the schedule step.</p></div>
    <div class="card">
      <div class="grid2">
        <label class="fld"><span class="lab">School year starts</span>
@@ -411,6 +516,11 @@ function setupStep(){
        <label class="fld"><span class="lab">Default unit duration <span class="hint">weeks</span></span>
          <input type="number" id="defWeeks" min="1" max="40" value="${s.defaultWeeks}"></label>
      </div>
+     <div class="breaks-block" style="margin-top:20px">
+       <div class="lab" style="font-size:13px;font-weight:620;margin-bottom:8px">Breaks &amp; holidays <span class="hint">excluded from teaching time; units flow around them</span></div>
+       <div id="breakList"></div>
+       <button class="btn add-break" id="addBreak" type="button">+ Add break</button>
+     </div>
      <p class="empty-note" id="splitNote"></p>
    </div>`;
   const $=id=>document.getElementById(id);
@@ -420,9 +530,39 @@ function setupStep(){
   $("grade").onchange=e=>{s.grade=e.target.value; if(s.split)syncSecondGrade(); setupStep();};
   $("grade2").onchange=e=>{s.grade2=e.target.value; setupStep();};
   $("defWeeks").onchange=e=>{s.defaultWeeks=Math.max(1,+e.target.value||1);};
+  renderBreaks(); $("addBreak").onclick=addBreak;
   function note(){const n=$("splitNote"); n.textContent = s.split
     ? `Standards will be shown grouped by Grade ${s.grade} and Grade ${s.grade2}.` : "";}
   note();
+}
+function findBreak(id){return state.breaks.find(b=>b.id===id);}
+function addBreak(){
+  const ys=state.setup.start;
+  state.breaks.push({id:++state.breakSeq,name:"",start:ys,end:iso(addDays(parseISO(ys),6))});
+  renderBreaks(); renderRail(); renderActions();
+}
+function renderBreaks(){
+  const el=document.getElementById("breakList"); if(!el)return;
+  if(!state.breaks.length){
+    el.innerHTML=`<p class="empty-note" style="margin:0 0 10px">No breaks yet — add winter break, spring break, pro-D days, etc.</p>`;
+    return;
+  }
+  el.innerHTML=state.breaks.map(b=>`
+    <div class="break-row" data-id="${b.id}">
+      <input type="text" class="bk-name" data-id="${b.id}" placeholder="e.g. Winter break" value="${esc(b.name)}">
+      <input type="date" class="bk-start" data-id="${b.id}" value="${b.start}">
+      <span class="dash">–</span>
+      <input type="date" class="bk-end" data-id="${b.id}" value="${b.end}">
+      <button class="bk-del" data-id="${b.id}" title="Remove break" aria-label="Remove break">✕</button>
+    </div>`).join("");
+  // name uses oninput (keep focus, no re-render); dates re-validate gating
+  el.querySelectorAll(".bk-name").forEach(i=>i.oninput=()=>{const b=findBreak(+i.dataset.id);if(b)b.name=i.value;});
+  el.querySelectorAll(".bk-start").forEach(i=>i.onchange=()=>{const b=findBreak(+i.dataset.id);if(b){b.start=i.value;renderRail();renderActions();}});
+  el.querySelectorAll(".bk-end").forEach(i=>i.onchange=()=>{const b=findBreak(+i.dataset.id);if(b){b.end=i.value;renderRail();renderActions();}});
+  el.querySelectorAll(".bk-del").forEach(btn=>btn.onclick=()=>{
+    state.breaks=state.breaks.filter(x=>x.id!==+btn.dataset.id);
+    renderBreaks(); renderRail(); renderActions();
+  });
 }
 function syncSecondGrade(){
   const i=GRADE_ORDER.indexOf(state.setup.grade);
@@ -638,40 +778,115 @@ function refreshCounts(subj,ps){
 function scheduleStep(){
   main.innerHTML=`
    <div class="step-head"><h2>Order &amp; schedule</h2>
-     <p>Arrange the units across the year and set each one's length. Dates are calculated from your school-year start.</p></div>
+     <p>Only units you’ve started in step 2 appear here. Dates are pre-filled from your school-year start and default duration, flowing around any breaks — edit a unit’s dates to override, and drag the handle to reorder.</p></div>
    <div id="schedList"></div>
+   <div id="breakRef"></div>
    <div id="schedMeter"></div>`;
   renderSchedule();
 }
 function renderSchedule(){
   const sc=schedule();
-  document.getElementById("schedList").innerHTML=sc.rows.map((r,pos)=>{
+  const list=document.getElementById("schedList");
+  if(!sc.rows.length){
+    list.innerHTML=`<div class="banner">No units started yet. Go back to <strong>Build units</strong> and add subjects (or a central idea) to at least one theme — only started units are scheduled and exported.</div>`;
+    document.getElementById("breakRef").innerHTML="";
+    document.getElementById("schedMeter").innerHTML="";
+    return;
+  }
+  list.innerHTML=sc.rows.map(r=>{
     const t=THEMES[r.idx];
-    return `<div class="sched-row" style="border-left-color:${t.color}">
-      <div class="mv">
-        <button data-up="${pos}" ${pos===0?"disabled":""} aria-label="Move up">▲</button>
-        <button data-down="${pos}" ${pos===sc.rows.length-1?"disabled":""} aria-label="Move down">▼</button>
+    const sVal=iso(r.start), eVal=iso(r.end);
+    let badge,warn="";
+    if(r.valid){
+      badge=`<span class="wk-badge">≈ ${fmtWeeks(r.spanDays)} weeks</span>`;
+      if(r.breakDays)badge+=`<span class="wk-sub">${fmtWeeks(r.teachingDays)} teaching · ${r.breakDays}d in breaks</span>`;
+      if(!r.withinYear)warn=`<div class="row-warn">Outside the school year.</div>`;
+    }else badge=`<span class="wk-badge none">end before start</span>`;
+    return `<div class="sched-row ${dragIdx===r.idx?"dragging":""}" data-idx="${r.idx}" style="border-left-color:${t.color}">
+      <span class="drag-handle" data-idx="${r.idx}" title="Drag to reorder" aria-label="Drag to reorder ${esc(t.name)}">⠿</span>
+      <div class="nm">${r.pos+1}. ${t.name}<small>${esc(unitSummary(r.idx))}</small></div>
+      <div class="udates">
+        <input type="date" class="ud-start" data-idx="${r.idx}" value="${sVal}">
+        <span class="dash">–</span>
+        <input type="date" class="ud-end" data-idx="${r.idx}" value="${eVal}">
+        ${r.manual?`<button class="reset-dates" data-idx="${r.idx}" title="Reset to auto dates">auto</button>`:""}
       </div>
-      <div class="nm">${pos+1}. ${t.name}<small>${unitSummary(r.idx)}</small></div>
-      <div class="dur"><input type="number" min="1" max="40" value="${r.weeks}" data-dur="${r.idx}"> weeks</div>
-      <div class="dates">${nice(r.start)} – ${nice(r.end)}</div>
+      <div class="wk-cell">${badge}${warn}</div>
     </div>`;
   }).join("");
-  const m=document.getElementById("schedMeter");
-  const availR=Math.floor(sc.avail);
-  m.innerHTML=`<div class="meter">Planned: <strong>${sc.total}</strong> weeks · School year: <strong>~${availR}</strong> weeks available.</div>
-    ${sc.over
-      ? `<div class="banner">Your units total ${sc.total} weeks, which is longer than the ~${availR}-week school year. Reduce some durations (or shorten the year) — export stays locked until this fits.</div>`
-      : `<div class="banner ok">This fits inside the school year. You're ready to generate the plan.</div>`}`;
-  document.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>move(+b.dataset.up,-1));
-  document.querySelectorAll("[data-down]").forEach(b=>b.onclick=()=>move(+b.dataset.down,1));
-  document.querySelectorAll("[data-dur]").forEach(inp=>inp.onchange=()=>{
-    state.durations[+inp.dataset.dur]=Math.max(1,+inp.value||1); renderSchedule(); renderRail(); renderActions();
+  document.querySelectorAll(".drag-handle").forEach(h=>h.addEventListener("pointerdown",e=>startDrag(e,+h.dataset.idx)));
+  document.querySelectorAll(".ud-start").forEach(i=>i.onchange=()=>setUnitDate(+i.dataset.idx,"start",i.value));
+  document.querySelectorAll(".ud-end").forEach(i=>i.onchange=()=>setUnitDate(+i.dataset.idx,"end",i.value));
+  document.querySelectorAll(".reset-dates").forEach(b=>b.onclick=()=>{
+    delete state.unitDates[+b.dataset.idx]; renderSchedule(); renderRail(); renderActions();
   });
+  renderBreakRef(sc);
+  renderSchedMeter(sc);
+}
+function setUnitDate(idx,which,val){
+  // capture current effective (auto) dates first so editing one side doesn't drop the other
+  const ud=state.unitDates[idx]||(state.unitDates[idx]={...effectiveDatesFor(idx)});
+  ud[which]=val;
+  if(!ud.start&&!ud.end)delete state.unitDates[idx];
+  renderSchedule(); renderRail(); renderActions();
+}
+function renderBreakRef(sc){
+  const el=document.getElementById("breakRef");
+  if(!sc.breaks.length){
+    el.innerHTML=`<div class="break-ref"><span class="br-head">No breaks set.</span> <button class="linklike" id="toSetup">Add them in Plan setup</button> and units will flow around them.</div>`;
+  }else{
+    el.innerHTML=`<div class="break-ref"><span class="br-head">Breaks <button class="linklike" id="toSetup">edit</button></span>
+      ${sc.breaks.map(b=>`<span class="br-chip ${b.withinYear?"":"bad"}"><span class="br-dot"></span>${esc(b.name||"Break")} · ${nice(b.start)}–${nice(b.end)} (${b.days}d)</span>`).join("")}</div>`;
+  }
+  const t=document.getElementById("toSetup"); if(t)t.onclick=()=>{state.step=0;render();};
+}
+function renderSchedMeter(sc){
+  const m=document.getElementById("schedMeter");
+  const teach=sc.rows.reduce((a,r)=>a+(r.valid?r.teachingDays:0),0);
+  const brkTotal=sc.breaks.reduce((a,b)=>a+b.days,0);
+  let banner;
+  if(sc.issues.length)banner=`<div class="banner">${esc(sc.issues[0])} Fix the dates above — export stays locked until every unit sits inside the school year.</div>`;
+  else banner=`<div class="banner ok">Every unit has valid in-year dates. You're ready to generate the plan.</div>`;
+  m.innerHTML=`<div class="meter"><strong>${sc.rows.length}</strong> unit(s) · <strong>${fmtWeeks(teach)}</strong> weeks of teaching time${brkTotal?` · <strong>${brkTotal}</strong> break day(s)`:""}.</div>${banner}`;
 }
 function unitSummary(idx){const u=state.units[idx];const s=u.subjects.length?u.subjects.join(", "):"no subjects yet";return s;}
-function move(pos,dir){const j=pos+dir;if(j<0||j>=state.order.length)return;
-  [state.order[pos],state.order[j]]=[state.order[j],state.order[pos]];renderSchedule();}
+
+/* ---- pointer-based drag reorder (mouse + touch), started units only ---- */
+let dragIdx=null;
+function writeStartedOrder(newStarted){
+  let k=0;
+  state.order=state.order.map(idx=>unitStarted(idx)?newStarted[k++]:idx);
+}
+function startDrag(e,idx){
+  e.preventDefault();
+  dragIdx=idx;
+  renderSchedule();
+}
+function onPointerMove(e){
+  if(dragIdx==null)return;
+  e.preventDefault();
+  const rows=[...document.querySelectorAll(".sched-row")];
+  if(!rows.length)return;
+  let target=rows.length-1;
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i].getBoundingClientRect();
+    if(e.clientY < r.top + r.height/2){ target=i; break; }
+  }
+  const started=state.order.filter(unitStarted);
+  const from=started.indexOf(dragIdx);
+  if(from===-1||target===from)return;
+  started.splice(target,0,started.splice(from,1)[0]);
+  writeStartedOrder(started);
+  renderSchedule();
+}
+function endDrag(){
+  if(dragIdx==null)return;
+  dragIdx=null;
+  renderSchedule(); renderRail(); renderActions();
+}
+window.addEventListener("pointermove",onPointerMove,{passive:false});
+window.addEventListener("pointerup",endDrag);
+window.addEventListener("pointercancel",endDrag);
 
 /* ===================================================================== *
  * Step 4 — Export
@@ -685,17 +900,20 @@ function exportStep(){
      <table class="ov-table"><thead><tr><th>#</th><th>Theme</th><th>Dates</th><th>Weeks</th><th>Subjects</th></tr></thead>
      <tbody>${sc.rows.map((r,p)=>{const t=THEMES[r.idx],u=state.units[r.idx];
         return `<tr><td>${p+1}</td><td><span class="sw" style="background:${t.color}"></span>${t.name}</td>
-          <td>${nice(r.start)} – ${nice(r.end)}</td><td>${r.weeks}</td>
-          <td>${u.subjects.join(", ")||"—"}</td></tr>`;}).join("")}</tbody></table>
+          <td>${nice(r.start)} – ${nice(r.end)}</td><td>${fmtWeeks(r.spanDays)}</td>
+          <td>${esc(u.subjects.join(", "))||"—"}</td></tr>`;}).join("")
+        ||`<tr><td colspan="5" class="empty-note">No started units yet.</td></tr>`}</tbody></table>
+     ${sc.breaks.length?`<table class="ov-table" style="margin-top:6px"><thead><tr><th>Break</th><th>Dates</th><th>Days</th></tr></thead>
+       <tbody>${sc.breaks.map(b=>`<tr><td>${esc(b.name||"Break")}</td><td>${nice(b.start)} – ${nice(b.end)}</td><td>${b.days}</td></tr>`).join("")}</tbody></table>`:""}
    </div>
-   <p class="empty-note">The button below builds a styled <strong>.xlsx</strong> — bold headings, theme-coloured tabs, borders, and wrapped elaborations — with a Year Overview tab plus one tab per unit. It imports cleanly into Google Sheets (Drive ▸ open, or File ▸ Import). Use the <em>Generate</em> button in the bar below.</p>`;
+   <p class="empty-note">The button below builds a styled <strong>.xlsx</strong> — bold headings, theme-coloured tabs, borders, and wrapped elaborations — with a Year Overview tab plus one tab per started unit. It imports cleanly into Google Sheets (Drive ▸ open, or File ▸ Import). Use the <em>Generate</em> button in the bar below.</p>`;
 }
 
 /* ===================================================================== *
  * Workbook generation (xlsx-js-style — styled)
  * ===================================================================== */
 function generate(){
-  const sc=schedule(); if(sc.over||!sc.validDates)return;
+  const sc=schedule(); if(!sc.ready)return;
   if(typeof XLSX==="undefined"||!XLSX.utils){
     document.getElementById("actionMsg").textContent="Spreadsheet library still loading — try again.";return;}
   const wb=XLSX.utils.book_new();
@@ -710,19 +928,26 @@ function generate(){
   ];
   sc.rows.forEach((r,p)=>{const u=state.units[r.idx];
     ov.push([xn(p+1,STY.ovCell),xc(THEMES[r.idx].name,themeCell(THEME_HEX[r.idx])),
-             xc(`${nice(r.start)} – ${nice(r.end)}`,STY.ovCell),xn(r.weeks,STY.ovCell),
+             xc(`${nice(r.start)} – ${nice(r.end)}`,STY.ovCell),xn(Math.round(r.spanDays/7*10)/10,STY.ovCell),
              xc(u.subjects.join(", "),STY.ovCell)]);});
+  if(sc.breaks.length){
+    ov.push([]);
+    ov.push([xc("Break",STY.ovBreakHead),xc("",STY.ovBreakHead),xc("Dates",STY.ovBreakHead),xc("Days",STY.ovBreakHead),xc("",STY.ovBreakHead)]);
+    sc.breaks.forEach(b=>ov.push([xc(b.name||"Break",STY.ovBreakCell),xc("",STY.ovBreakCell),
+      xc(`${nice(b.start)} – ${nice(b.end)}`,STY.ovBreakCell),xn(b.days,STY.ovBreakCell),xc("",STY.ovBreakCell)]));
+  }
   const ovWs=XLSX.utils.aoa_to_sheet(ov);
   ovWs["!cols"]=[{wch:6},{wch:36},{wch:20},{wch:8},{wch:46}];
   ovWs["!merges"]=[{s:{r:0,c:0},e:{r:0,c:4}},{s:{r:1,c:0},e:{r:1,c:4}}];
   ovWs["!rows"]=[{hpt:20},{hpt:16}];
   XLSX.utils.book_append_sheet(wb,ovWs,"Year Overview");
 
-  // Sheets 2–7 — per unit
+  // Sheets 2+ — per started unit
   sc.rows.forEach((r,p)=>{
     const u=state.units[r.idx], t=THEMES[r.idx], hex=THEME_HEX[r.idx], rows=[];
     rows.push([xc(`Unit ${p+1} — ${t.name}`,themeBand(hex))]);
-    rows.push([xc(`Dates: ${nice(r.start)} – ${nice(r.end)}     |     Duration: ${r.weeks} weeks`,STY.meta)]);
+    rows.push([xc(`Dates: ${nice(r.start)} – ${nice(r.end)}     |     ${fmtWeeks(r.spanDays)} weeks${r.breakDays?` (${fmtWeeks(r.teachingDays)} teaching)`:""}`,STY.meta)]);
+    if(r.overlaps.length)rows.push([xc(`Breaks during this unit: ${r.overlaps.map(o=>`${o.name} (${o.days}d)`).join(", ")}`,STY.breakNote)]);
     rows.push([xc(`Central Idea: ${u.centralIdea||"—"}`,STY.central)]);
     rows.push([xc(SEP,STY.sep)]);
     u.subjects.forEach(subj=>{
@@ -765,8 +990,9 @@ function sheetName(n,name){return `${n}. ${name}`.replace(/[\\\/\?\*\[\]:]/g,"")
 function applyData(data,label,isSample){
   state.data=data; state.dataLabel=label;
   state.units=THEMES.map(()=>({subjects:[],perSubject:{},centralIdea:"",assessment:""}));
-  state.order=[0,1,2,3,4,5]; state.durations={}; state.activeTheme=0;
+  state.order=[0,1,2,3,4,5]; state.durations={}; state.unitDates={}; state.activeTheme=0;
   state.ui={collapsed:{}};
+  // breaks and setup (school year, grade, default duration) persist across reloads
   const chip=document.getElementById("dataChip");
   chip.classList.toggle("sample",!!isSample);
   document.getElementById("dataLabel").textContent=label;
