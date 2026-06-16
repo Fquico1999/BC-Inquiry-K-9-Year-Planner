@@ -334,6 +334,18 @@ const themeCell=hex=>({font:{bold:true,sz:11,color:{rgb:"FFFFFF"}},fill:{fgColor
 STY.ovBreakHead={font:{bold:true,sz:11,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:"8A8F98"}},alignment:{vertical:"center"},border:thinB("D9DCD6")};
 STY.ovBreakCell={font:{italic:true,sz:11,color:{rgb:"5A6675"}},alignment:{vertical:"top"},border:thinB("E3E6E0")};
 STY.breakNote={font:{italic:true,sz:11,color:{rgb:"8A4B16"}}};
+// Per-unit sheet: subjects laid out as side-by-side columns with aligned bands.
+STY.subjHead={font:{bold:true,sz:12,color:{rgb:"20262E"}},fill:{fgColor:{rgb:"EEF0EC"}},
+  alignment:{horizontal:"center",vertical:"center",wrapText:true},border:thinB("D9DCD6")};
+STY.keyCol={font:{italic:true,sz:10,color:{rgb:"0A5C4B"}},alignment:{wrapText:true,vertical:"top"},border:thinB("E3E6E0")};
+STY.cellComp={font:{sz:11,color:{rgb:"20262E"}},alignment:{wrapText:true,vertical:"top"},border:thinB("E3E6E0")};
+STY.cellCont={font:{sz:11,color:{rgb:"20262E"}},alignment:{wrapText:true,vertical:"top"},border:thinB("E3E6E0")};
+STY.pad={fill:{fgColor:{rgb:"FBFCFB"}},border:thinB("EEF0EC")};
+STY.compHead={font:{bold:true,sz:11,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:"0E7C66"}},alignment:{vertical:"center"},border:thinB("0A5C4B")};
+STY.contHead={font:{bold:true,sz:11,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:"3F6FB0"}},alignment:{vertical:"center"},border:thinB("2F5588")};
+
+// Shared separator rule used on every unit sheet.
+const SEP="────────────────────────────────────────";
 
 const state = {
   data:SAMPLE, dataLabel:"Sample data",
@@ -917,11 +929,10 @@ function generate(){
   if(typeof XLSX==="undefined"||!XLSX.utils){
     document.getElementById("actionMsg").textContent="Spreadsheet library still loading — try again.";return;}
   const wb=XLSX.utils.book_new();
-  const SEP="────────────────────────────────────────";
 
   // Sheet 1 — overview
   const ov=[
-    [xc("BC Elementary IB PYP — Year Plan",STY.ovTitle)],
+    [xc("BC Elementary Year Plan",STY.ovTitle)],
     [xc(`Grade ${grades().join(" / ")}    ·    ${niceFull(parseISO(state.setup.start))} – ${niceFull(parseISO(state.setup.end))}`,STY.ovSub)],
     [],
     [xc("Unit",STY.ovHead),xc("Transdisciplinary Theme",STY.ovHead),xc("Dates",STY.ovHead),xc("Weeks",STY.ovHead),xc("Subjects",STY.ovHead)]
@@ -942,34 +953,14 @@ function generate(){
   ovWs["!rows"]=[{hpt:20},{hpt:16}];
   XLSX.utils.book_append_sheet(wb,ovWs,"Year Overview");
 
-  // Sheets 2+ — per started unit
+  // Sheets 2+ — per started unit (subjects as side-by-side aligned columns)
   sc.rows.forEach((r,p)=>{
-    const u=state.units[r.idx], t=THEMES[r.idx], hex=THEME_HEX[r.idx], rows=[];
-    rows.push([xc(`Unit ${p+1} — ${t.name}`,themeBand(hex))]);
-    rows.push([xc(`Dates: ${nice(r.start)} – ${nice(r.end)}     |     ${fmtWeeks(r.spanDays)} weeks${r.breakDays?` (${fmtWeeks(r.teachingDays)} teaching)`:""}`,STY.meta)]);
-    if(r.overlaps.length)rows.push([xc(`Breaks during this unit: ${r.overlaps.map(o=>`${o.name} (${o.days}d)`).join(", ")}`,STY.breakNote)]);
-    rows.push([xc(`Central Idea: ${u.centralIdea||"—"}`,STY.central)]);
-    rows.push([xc(SEP,STY.sep)]);
-    u.subjects.forEach(subj=>{
-      const ps=u.perSubject[subj]||{selected:new Set(),keyConcepts:""};
-      rows.push([]); rows.push([xc(subj,STY.subject)]);
-      if(ps.keyConcepts.trim())rows.push([xc(`Key Concepts: ${ps.keyConcepts.trim()}`,STY.keyc)]);
-      const sel=collectSelected(subj,ps);
-      if(sel.comp.length){rows.push([xc("Curricular Competencies",STY.label)]);
-        sel.comp.forEach(it=>{rows.push([xc(`   •  ${it.text}`,STY.bullet)]); elabLines(it).forEach(l=>rows.push([xc(`         ${l}`,STY.elab)]));});}
-      if(sel.content.length){rows.push([xc("Content",STY.label)]);
-        sel.content.forEach(it=>{rows.push([xc(`   •  ${it.text}`,STY.bullet)]); elabLines(it).forEach(l=>rows.push([xc(`         ${l}`,STY.elab)]));});}
-      if(!sel.comp.length&&!sel.content.length)rows.push([xc("(no standards selected)",STY.elab)]);
-    });
-    rows.push([]); rows.push([xc(SEP,STY.sep)]);
-    rows.push([xc("Assessment",STY.label)]); rows.push([xc(u.assessment||"—",STY.bullet)]);
-    const ws=XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"]=[{wch:98}];
-    ws["!rows"]=[{hpt:22}];
+    const t=THEMES[r.idx];
+    const ws=buildUnitSheet(r,p,state.units[r.idx],t,THEME_HEX[r.idx]);
     XLSX.utils.book_append_sheet(wb,ws,sheetName(p+1,t.name));
   });
 
-  XLSX.writeFile(wb,`PYP_Year_Plan_Grade_${grades().join("-")}.xlsx`);
+  XLSX.writeFile(wb,`BC_Elementary_Year_Plan_Grade_${grades().join("-")}.xlsx`);
   document.getElementById("actionMsg").textContent="Workbook downloaded ✓";
 }
 function collectSelected(subj,ps){
@@ -983,6 +974,73 @@ function collectSelected(subj,ps){
 }
 function elabLines(it){return it.elaborations?Object.entries(it.elaborations).map(([k,v])=>`${k}: ${v}`):[];}
 function sheetName(n,name){return `${n}. ${name}`.replace(/[\\\/\?\*\[\]:]/g,"").slice(0,31);}
+
+/* Build one unit's worksheet. Subjects sit side-by-side (one column each) so the
+ * Curricular Competencies band and the Content band line up horizontally across
+ * subjects: each band is exactly as tall as the subject with the most items, and
+ * shorter subjects get blank padding cells so every row aligns. Elaborations ride
+ * along as a cell note (hover/▸ marker) instead of extra rows, keeping the grid
+ * intact. Banner, dates, central idea and assessment span the full width. */
+function buildUnitSheet(r,p,u,t,hex){
+  const subjects=u.subjects.map(name=>{
+    const ps=u.perSubject[name]||{selected:new Set(),keyConcepts:""};
+    const sel=collectSelected(name,ps);
+    return {name, key:(ps.keyConcepts||"").trim(), comp:sel.comp, content:sel.content};
+  });
+  const N=Math.max(1,subjects.length);
+  const ws={}, merges=[], ref={s:{r:0,c:0},e:{r:0,c:N-1}};
+  let R=0;
+  const put=(rr,cc,cell)=>{ws[XLSX.utils.encode_cell({r:rr,c:cc})]=cell;
+    if(rr>ref.e.r)ref.e.r=rr; if(cc>ref.e.c)ref.e.c=cc;};
+  const fullRow=cell=>{put(R,0,cell); if(N>1)merges.push({s:{r:R,c:0},e:{r:R,c:N-1}}); R++;};
+  const noteCell=(text,style,it)=>{
+    const cell=xc("•  "+text,style);
+    const lines=elabLines(it);
+    if(lines.length){cell.c=[{a:"BC Curriculum",t:lines.join("\n")}]; cell.c.hidden=true;}
+    return cell;
+  };
+
+  // full-width header block
+  fullRow(xc(`Unit ${p+1} — ${t.name}`,themeBand(hex)));
+  fullRow(xc(`Dates: ${nice(r.start)} – ${nice(r.end)}     |     ${fmtWeeks(r.spanDays)} weeks${r.breakDays?` (${fmtWeeks(r.teachingDays)} teaching)`:""}`,STY.meta));
+  if(r.overlaps.length)fullRow(xc(`Breaks during this unit: ${r.overlaps.map(o=>`${o.name} (${o.days}d)`).join(", ")}`,STY.breakNote));
+  fullRow(xc(`Central Idea: ${u.centralIdea||"—"}`,STY.central));
+  fullRow(xc(SEP,STY.sep));
+
+  if(!subjects.length){
+    fullRow(xc("No subjects selected for this unit.",STY.bullet));
+  }else{
+    // subject name row, then a key-concepts row — one cell per subject column
+    subjects.forEach((s,c)=>put(R,c,xc(s.name,STY.subjHead))); R++;
+    subjects.forEach((s,c)=>put(R,c, s.key?xc(`Key concepts: ${s.key}`,STY.keyCol):xc("",STY.pad))); R++;
+
+    const band=(label,arrKey,style,headStyle)=>{
+      const max=Math.max(0,...subjects.map(s=>s[arrKey].length));
+      fullRow(xc(label,headStyle));
+      if(max===0){ fullRow(xc(`(no ${arrKey==="comp"?"competencies":"content"} selected for any subject)`,STY.elab)); return; }
+      for(let j=0;j<max;j++){
+        subjects.forEach((s,c)=>{
+          const it=s[arrKey][j];
+          put(R,c, it?noteCell(it.text,style,it):xc("",STY.pad));
+        });
+        R++;
+      }
+    };
+    band("Curricular Competencies","comp",STY.cellComp,STY.compHead);
+    band("Content","content",STY.cellCont,STY.contHead);
+  }
+
+  // full-width footer
+  fullRow(xc(SEP,STY.sep));
+  fullRow(xc("Assessment",STY.label));
+  fullRow(xc(u.assessment||"—",STY.bullet));
+
+  ws["!ref"]=XLSX.utils.encode_range(ref);
+  if(merges.length)ws["!merges"]=merges;
+  ws["!cols"]=Array.from({length:N},()=>({wch:36}));
+  ws["!rows"]=[{hpt:22}];
+  return ws;
+}
 
 /* ===================================================================== *
  * Data loading — auto-fetch on load, manual picker as fallback/override
