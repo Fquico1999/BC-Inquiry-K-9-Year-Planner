@@ -309,7 +309,7 @@ const THEMES = [
 ];
 const THEME_HEX = ["c65d5d","c8893a","7b5ea7","2e8b8b","3f6fb0","5c8a3c"];
 const GRADE_ORDER = ["K","1","2","3","4","5","6","7"];
-const STEPS = ["Plan setup","Build units","Order & schedule","Generate & export"];
+const STEPS = ["Plan setup","Build units","Order & Schedule","Generate & Export"];
 
 /* ---- xlsx-js-style cell + style helpers (used at export) ---- */
 function xc(v,s){return {v:v==null?"":String(v),t:"s",s:s||{}};}        // string cell
@@ -485,7 +485,7 @@ function renderActions(){
   back.style.visibility=state.step===0?"hidden":"visible";
   const sc=schedule();
   if(state.step===3){
-    next.textContent="Generate Year Plan (.xlsx)";
+    next.textContent="Generate Year Plan";
     next.disabled=!sc.ready;
     msg.textContent = !sc.validDates ? "Check your school-year dates."
       : !sc.rows.length ? "Start at least one unit in step 2."
@@ -506,7 +506,7 @@ function setupStep(){
   const s=state.setup;
   const opts=g=>GRADE_ORDER.map(x=>`<option ${x===g?"selected":""}>${x}</option>`).join("");
   main.innerHTML=`
-   <div class="step-head"><h2>Plan setup</h2>
+   <div class="step-head wide"><h2>Plan setup</h2>
      <p>Set the school year, the grade you teach, any breaks, and a default unit length. You’ll fine-tune each unit’s exact dates on the schedule step.</p></div>
    <div class="card">
      <div class="grid2">
@@ -789,7 +789,7 @@ function refreshCounts(subj,ps){
  * ===================================================================== */
 function scheduleStep(){
   main.innerHTML=`
-   <div class="step-head"><h2>Order &amp; schedule</h2>
+   <div class="step-head wide"><h2>Order &amp; Schedule</h2>
      <p>Only units you’ve started in step 2 appear here. Dates are pre-filled from your school-year start and default duration, flowing around any breaks — edit a unit’s dates to override, and drag the handle to reorder.</p></div>
    <div id="schedList"></div>
    <div id="breakRef"></div>
@@ -906,8 +906,8 @@ window.addEventListener("pointercancel",endDrag);
 function exportStep(){
   const sc=schedule();
   main.innerHTML=`
-   <div class="step-head"><h2>Generate &amp; export</h2>
-     <p>Review the year at a glance, then generate a formatted workbook. Open it in Google Sheets via Drive, or File → Import.</p></div>
+   <div class="step-head wide"><h2>Generate &amp; Export</h2>
+     <p>Review the year at a glance, then generate a formatted workbook.</p></div>
    <div class="card">
      <table class="ov-table"><thead><tr><th>#</th><th>Theme</th><th>Dates</th><th>Weeks</th><th>Subjects</th></tr></thead>
      <tbody>${sc.rows.map((r,p)=>{const t=THEMES[r.idx],u=state.units[r.idx];
@@ -917,8 +917,7 @@ function exportStep(){
         ||`<tr><td colspan="5" class="empty-note">No started units yet.</td></tr>`}</tbody></table>
      ${sc.breaks.length?`<table class="ov-table" style="margin-top:6px"><thead><tr><th>Break</th><th>Dates</th><th>Days</th></tr></thead>
        <tbody>${sc.breaks.map(b=>`<tr><td>${esc(b.name||"Break")}</td><td>${nice(b.start)} – ${nice(b.end)}</td><td>${b.days}</td></tr>`).join("")}</tbody></table>`:""}
-   </div>
-   <p class="empty-note">The button below builds a styled <strong>.xlsx</strong> — bold headings, theme-coloured tabs, borders, and wrapped elaborations — with a Year Overview tab plus one tab per started unit. It imports cleanly into Google Sheets (Drive ▸ open, or File ▸ Import). Use the <em>Generate</em> button in the bar below.</p>`;
+   </div>`;
 }
 
 /* ===================================================================== *
