@@ -62,6 +62,7 @@
   .step-head{margin:0 0 4px}
   .step-head h2{font-size:23px;margin:0;letter-spacing:-.015em;font-weight:680}
   .step-head p{margin:5px 0 0;color:var(--ink-soft);max-width:62ch}
+  .step-head.wide p{max-width:none}
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-top:18px}
   .card.spine{border-left-width:4px}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -433,8 +434,13 @@ function syncSecondGrade(){
  * ===================================================================== */
 function unitsStep(){
   main.innerHTML=`
-   <div class="step-head"><h2>Build units</h2>
-     <p>One unit per transdisciplinary theme. Pick subjects, link curriculum standards, then add your key concepts, central idea, and assessment.</p></div>
+   <div class="step-head wide">
+     <h2>Build units</h2>
+     <p>1. Select your first overarching transdisciplinary theme.</p>
+     <p>2. Pick the subjects you want to connect to that theme.</p>
+     <p>3. Expand each subject's <em>Curricular Competencies</em> and <em>Content</em> sections, then select the skills and content you want to cover.</p>
+     <p>4. Do the same for your remaining chosen subjects.</p>
+   </div>
    <div class="theme-tabs" id="themeTabs"></div>
    <div id="unitBody"></div>`;
   renderThemeTabs();
