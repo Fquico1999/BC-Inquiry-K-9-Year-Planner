@@ -7,6 +7,8 @@
 <link rel="icon" type="image/png" href="./images/favicon.png">
 <!-- xlsx-js-style: SheetJS community build + cell styling (bold, fills, borders, wrap) -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<!-- JSZip: lets us inject freeze panes into the exported workbook (xlsx-js-style can't write panes) -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
   :root{
     --paper:#f5f6f3; --card:#ffffff; --ink:#20262e; --ink-soft:#5a6675;
@@ -921,9 +923,154 @@ function exportStep(){
 }
 
 /* ===================================================================== *
+ * Step 4.5 — Template Sheet Generator
+ * ===================================================================== */
+// function buildTemplateSheet(sc) {
+//   const allSubjects = subjectNames();
+//   const timeline = [];
+  
+//   // Start on the Monday of the week containing the school year start date
+//   const ys = new Date(sc.ys.getTime());
+//   const day = ys.getDay();
+//   const diff = ys.getDate() - day + (day === 0 ? -6 : 1);
+//   let c = new Date(ys.getTime());
+//   c.setDate(diff);
+  
+//   // Build columns: Weeks and Breaks
+//   let weekNum = 1;
+//   while (c <= sc.ye) {
+//     let ce = addDays(c, 4); // Monday to Friday
+//     let maxBreakD = 0, brkName = "";
+    
+//     sc.breaks.forEach(b => {
+//       let d = overlapDays(c, ce, b.start, b.end);
+//       if (d > maxBreakD) { maxBreakD = d; brkName = b.name; }
+//     });
+    
+//     // If a break spans 3 or more days of the Mon-Fri week, designate it as a Break column
+//     if (maxBreakD >= 3) {
+//       timeline.push({ type: 'break', label: brkName || "Break", start: c, end: ce });
+//     } else {
+//       timeline.push({ type: 'week', label: 'Week ' + weekNum, start: c, end: ce });
+//       weekNum++;
+//     }
+//     c = addDays(c, 7);
+//   }
+
+//   const N = timeline.length;
+//   const ws = {};
+//   const merges = [];
+//   const ref = {s:{r:0,c:0}, e:{r:allSubjects.length + 1, c:N}};
+  
+//   const put = (rr, cc, cell) => { ws[XLSX.utils.encode_cell({r:rr, c:cc})] = cell; };
+
+//   // Styles with text wrapping enabled
+//   const STY_H = {font:{bold:true,sz:12,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:"20262E"}},alignment:{horizontal:"center",vertical:"center",wrapText:true},border:thinB("D9DCD6")};
+//   const STY_D = {font:{sz:10,color:{rgb:"5A6675"}},fill:{fgColor:{rgb:"F5F6F3"}},alignment:{horizontal:"center",vertical:"center",wrapText:true},border:thinB("D9DCD6")};
+//   const STY_S = {font:{bold:true,sz:12,color:{rgb:"20262E"}},fill:{fgColor:{rgb:"EEF0EC"}},alignment:{vertical:"center",wrapText:true},border:thinB("D9DCD6")};
+
+//   // Set explicit header row heights
+//   const rowHeights = [{hpt: 35}, {hpt: 35}];
+
+//   // Row 0 & 1: Headers & Dates
+//   put(0, 0, xc("Subject", STY_H));
+//   put(1, 0, xc("Dates", STY_D));
+  
+//   timeline.forEach((col, i) => {
+//     let st = (col.type === 'break') ? STY.ovBreakHead : STY_H;
+//     put(0, i+1, xc(col.label, st));
+//     put(1, i+1, xc(nice(col.start) + "\n–\n" + nice(col.end), STY_D));
+//   });
+
+//   // Data Rows: Map subjects to themes
+//   allSubjects.forEach((subj, rIdx) => {
+//     let R = rIdx + 2;
+    
+//     // Set explicit data row heights to be tall enough for typing plans
+//     rowHeights.push({hpt: 65}); 
+//     put(R, 0, xc(subj, STY_S));
+    
+//     let rowStates = [];
+//     timeline.forEach(col => {
+//       if (col.type === 'break') {
+//         rowStates.push({ type: 'break' });
+//       } else {
+//         let activeU = null, maxUD = 0;
+//         sc.rows.forEach(r => {
+//           if (!r.valid) return;
+//           let d = overlapDays(col.start, col.end, r.start, r.end);
+//           if (d > maxUD) { maxUD = d; activeU = r; }
+//         });
+        
+//         if (activeU) {
+//           if (state.units[activeU.idx].subjects.includes(subj)) {
+//             rowStates.push({ type: 'active', hex: THEME_HEX[activeU.idx] });
+//           } else {
+//             rowStates.push({ type: 'grey' }); 
+//           }
+//         } else {
+//           rowStates.push({ type: 'empty' });
+//         }
+//       }
+//     });
+
+//     let cIdx = 0;
+//     while (cIdx < rowStates.length) {
+//       let st = rowStates[cIdx];
+//       let span = 1;
+      
+//       // ONLY merge cells if they are NOT an active teaching unit
+//       if (st.type !== 'active') {
+//         while (cIdx + span < rowStates.length) {
+//           let nxt = rowStates[cIdx + span];
+//           if (st.type === nxt.type && st.hex === nxt.hex) span++;
+//           else break;
+//         }
+//       }
+      
+//       let startCol = cIdx + 1;
+//       let endCol = startCol + span - 1;
+//       let cellStyle;
+      
+//       if (st.type === 'break') {
+//         cellStyle = {fill:{fgColor:{rgb:"D9DCD6"}}, border:thinB("FFFFFF")};
+//       } else if (st.type === 'active') {
+//         // Active units align text to the top for easy typing
+//         cellStyle = {fill:{fgColor:{rgb:st.hex}}, border:thinB("FFFFFF"), alignment:{vertical:"top", wrapText:true}};
+//       } else if (st.type === 'grey') {
+//         cellStyle = {fill:{fgColor:{rgb:"F5F6F3"}}, border:thinB("FFFFFF")};
+//       } else {
+//         cellStyle = {border:thinB("E3E6E0")};
+//       }
+      
+//       put(R, startCol, xc("", cellStyle));
+//       for(let i = 1; i < span; i++) put(R, startCol + i, xc("", cellStyle));
+      
+//       if (span > 1) merges.push({ s: {r: R, c: startCol}, e: {r: R, c: endCol} });
+      
+//       cIdx += span;
+//     }
+//   });
+
+//   ws["!ref"] = XLSX.utils.encode_range(ref);
+//   if (merges.length) ws["!merges"] = merges;
+  
+//   // Format column widths and row heights
+//   let colsArr = [{wch: 26}]; // Wider Subject column
+//   for(let i=0; i<N; i++) colsArr.push({wch: timeline[i].type === 'break' ? 8 : 18}); // Wider week columns
+//   ws["!cols"] = colsArr;
+//   ws["!rows"] = rowHeights;
+  
+//   // Freeze Column A and Rows 1 & 2 using the native !views array syntax
+//   ws["!views"] = [{ state: "frozen", xSplit: 1, ySplit: 2, topLeftCell: "B3" }];
+
+//   return ws;
+// }
+
+/* ===================================================================== *
  * Workbook generation (xlsx-js-style — styled)
  * ===================================================================== */
-function generate(){
+async function generate(){
   const sc=schedule(); if(!sc.ready)return;
   if(typeof XLSX==="undefined"||!XLSX.utils){
     document.getElementById("actionMsg").textContent="Spreadsheet library still loading — try again.";return;}
@@ -952,14 +1099,18 @@ function generate(){
   ovWs["!rows"]=[{hpt:20},{hpt:16}];
   XLSX.utils.book_append_sheet(wb,ovWs,"Year Overview");
 
-  // Sheets 2+ — per started unit (subjects as side-by-side aligned columns)
+  // Sheet 2 — Unit Planner (week-by-week template: subjects × themes, coloured
+  // per theme, breaks as vertical bands, non-theme subjects greyed out).
+  XLSX.utils.book_append_sheet(wb,buildPlannerSheet(sc),"Year Plan Template");
+
+  // Sheets 3+ — per started unit (subjects as side-by-side aligned columns)
   sc.rows.forEach((r,p)=>{
     const t=THEMES[r.idx];
     const ws=buildUnitSheet(r,p,state.units[r.idx],t,THEME_HEX[r.idx]);
     XLSX.utils.book_append_sheet(wb,ws,sheetName(p+1,t.name));
   });
 
-  XLSX.writeFile(wb,`BC_Elementary_Year_Plan_Grade_${grades().join("-")}.xlsx`);
+  await writeWorkbookWithFreeze(wb,`BC_Elementary_Year_Plan_Grade_${grades().join("-")}.xlsx`,"Unit Planner");
   document.getElementById("actionMsg").textContent="Workbook downloaded ✓";
 }
 function collectSelected(subj,ps){
@@ -973,6 +1124,176 @@ function collectSelected(subj,ps){
 }
 function elabLines(it){return it.elaborations?Object.entries(it.elaborations).map(([k,v])=>`${k}: ${v}`):[];}
 function sheetName(n,name){return `${n}. ${name}`.replace(/[\\\/\?\*\[\]:]/g,"").slice(0,31);}
+
+/* ===================================================================== *
+ * Unit Planner sheet — a week-by-week template (Gantt-style).
+ *   • Two frozen header rows: Week N, and that week's Monday date. Weeks are
+ *     always whole (never cut short); a week whose start falls inside a break is
+ *     dropped and the break appears as its own single column at that spot.
+ *   • Each break is one column whose merged, centred label sits in the body
+ *     (below the header rows, so it never crosses the freeze line).
+ *   • For every week, a subject taught in that week's theme gets a single
+ *     theme-tinted cell (NOT merged — teachers type a lesson per week); a
+ *     subject NOT taught in that theme gets a greyed, merged span instead.
+ *   • The subject column + the two header rows are frozen (injected post-write).
+ *   No title row and no theme-band row: both would have produced merges that
+ *   straddle the freeze boundary (which Excel rejects), and neither is needed —
+ *   the per-week cell colour already shows each theme's span.
+ * ===================================================================== */
+function lightenHex(hex,f){
+  const n=parseInt(hex,16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.round(r+(255-r)*f); g=Math.round(g+(255-g)*f); b=Math.round(b+(255-b)*f);
+  return ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1).toUpperCase();
+}
+function plannerColumns(sc){
+  const brks=[...sc.breaks].filter(b=>b.end>=b.start).sort((a,b)=>a.start-b.start);
+  // Whole weeks stepping 7 days from the school-year start. A week whose start
+  // lands inside a break is skipped (that time belongs to the break); weeks are
+  // never truncated, so there are no ragged short weeks.
+  const weeks=[]; let cursor=new Date(sc.ys), guard=0;
+  while(cursor<=sc.ye && guard++<600){
+    if(!brks.some(b=>b.start<=cursor && cursor<=b.end)){
+      const e=addDays(cursor,6);
+      weeks.push({type:"week",start:new Date(cursor),end:e>sc.ye?new Date(sc.ye):e});
+    }
+    cursor=addDays(cursor,7);
+  }
+  const breakCols=brks.filter(b=>b.start<=sc.ye && b.end>=sc.ys)
+    .map(b=>({type:"break",name:b.name,start:b.start,end:b.end}));
+  // Interleave by chronology; on a tie the week sorts before the break.
+  const cols=weeks.concat(breakCols)
+    .sort((a,b)=>(a.start-b.start) || (a.type==="week"?-1:1));
+  let weekNo=1; cols.forEach(c=>{ if(c.type==="week") c.weekNo=weekNo++; });
+  // assign each week to the unit it overlaps the most
+  cols.forEach(col=>{ if(col.type!=="week")return; let best=null,bo=0;
+    sc.rows.forEach(r=>{const ov=overlapDays(col.start,col.end,r.start,r.end);if(ov>bo){bo=ov;best=r.idx;}});
+    col.unitIdx=bo>0?best:null; });
+  return cols;
+}
+function buildPlannerSheet(sc){
+  const cols=plannerColumns(sc);
+  const used=new Set(); sc.rows.forEach(r=>state.units[r.idx].subjects.forEach(s=>used.add(s)));
+  const subjects=subjectNames().filter(s=>used.has(s));
+
+  const HEADER="EEF0EC", INK="20262E", GREY="EDEDED", BREAKC="F4CCCC";
+  const sHdr={fill:{fgColor:{rgb:HEADER}},font:{bold:true,sz:10,color:{rgb:INK}},
+    alignment:{horizontal:"center",vertical:"center"},border:thinB("D9DCD6")};
+  const sDate={fill:{fgColor:{rgb:HEADER}},font:{sz:9,color:{rgb:"5A6675"}},
+    alignment:{horizontal:"center",vertical:"center"},border:thinB("D9DCD6")};
+  const sSubj={fill:{fgColor:{rgb:"F4F6F2"}},font:{bold:true,sz:11,color:{rgb:INK}},
+    alignment:{vertical:"center",wrapText:true},border:thinB("D9DCD6")};
+  const sMember=hex=>({fill:{fgColor:{rgb:hex}},font:{sz:10,color:{rgb:INK}},
+    alignment:{vertical:"top",wrapText:true},border:thinB("FFFFFF")});
+  const sGrey={fill:{fgColor:{rgb:GREY}},font:{sz:9,italic:true,color:{rgb:"AAB0AA"}},
+    alignment:{horizontal:"center",vertical:"center"},border:thinB("FFFFFF")};
+  const sBreak={fill:{fgColor:{rgb:BREAKC}},font:{bold:true,sz:10,color:{rgb:"8A4B16"}},
+    alignment:{horizontal:"center",vertical:"center",wrapText:true},border:thinB("E8C39A")};
+  
+  // New style for the body cells of the break (colored, but no text and standard borders)
+  const sBreakBody={fill:{fgColor:{rgb:BREAKC}}, border:thinB("FFFFFF")};
+
+  const ws={}, merges=[];
+  const enc=XLSX.utils.encode_cell;
+  const put=(r,c,v,s)=>{ws[enc({r,c})]={v:v==null?"":String(v),t:"s",s:s||{}};};
+  const lastCol=cols.length;                 
+  const R_WK=0,R_DATE=1,R_BODY=2;            
+  const lastRow=R_BODY+Math.max(1,subjects.length)-1;
+
+  // Header rows
+  put(R_WK,0,"",sHdr); put(R_DATE,0,"Subject",sHdr);
+  cols.forEach((col,k)=>{const c=k+1;
+    if(col.type==="week"){ 
+      put(R_WK,c,"Week "+col.weekNo,sHdr); 
+      put(R_DATE,c,nice(col.start),sDate); 
+    } else {
+      // Break columns: Title in the "Subject" row (R_DATE) with a generic label in R_WK
+      put(R_WK,c,"Break",sBreak);
+      put(R_DATE,c,col.name||"Break",sBreak);
+    }
+  });
+
+  if(!subjects.length){
+    put(R_BODY,0,"Add subjects to your units to fill in this planner.",
+      {font:{italic:true,sz:11,color:{rgb:"5A6675"}}});
+  }else subjects.forEach((subj,si)=>{
+    const r=R_BODY+si;
+    put(r,0,subj,sSubj);
+    let k=0;
+    while(k<cols.length){
+      const col=cols[k];
+      
+      // Break cells are now handled inline: colored but unmerged
+      if(col.type==="break"){ 
+        put(r,k+1,"",sBreakBody); 
+        k++; 
+        continue; 
+      }
+      
+      const idx=col.unitIdx;
+      const member = idx!=null && state.units[idx].subjects.includes(subj);
+      if(member){ put(r,k+1,"",sMember(lightenHex(THEME_HEX[idx],0.74))); k++; continue; } 
+      if(idx==null){ put(r,k+1,"",{}); k++; continue; }       
+      
+      let j=k;
+      while(j+1<cols.length && cols[j+1].type==="week"){
+        const ni=cols[j+1].unitIdx;
+        const nMember = ni!=null && state.units[ni].subjects.includes(subj);
+        if(ni==null || nMember) break;
+        j++;
+      }
+      const c0=k+1,c1=j+1;
+      put(r,c0,"—",sGrey); for(let cc=c0+1;cc<=c1;cc++)put(r,cc,"",sGrey);
+      if(c1>c0)merges.push({s:{r,c:c0},e:{r,c:c1}});
+      k=j+1;
+    }
+  });
+
+  ws["!ref"]=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:lastRow,c:Math.max(lastCol,1)}});
+  ws["!merges"]=merges;
+  ws["!cols"]=[{wch:22},...cols.map(col=>({wch:col.type==="break"?14:14}))];
+  ws["!rows"]=[{hpt:16},{hpt:16},...Array.from({length:Math.max(1,subjects.length)},()=>({hpt:34}))];
+  return ws;
+}
+
+/* xlsx-js-style can't write freeze panes, so write the workbook to bytes, inject
+ * a <pane> into the planner sheet's XML (frozen at B3 = first col + 2 header
+ * rows), and download. Falls back to a plain write (no freeze) if JSZip is
+ * unavailable or anything goes wrong. */
+async function writeWorkbookWithFreeze(wb,filename,plannerSheetName){
+  if(typeof JSZip==="undefined"){ XLSX.writeFile(wb,filename); return; }
+  try{
+    const buf=XLSX.write(wb,{type:"array",bookType:"xlsx"});
+    const zip=await JSZip.loadAsync(buf);
+    const wbXml=await zip.file("xl/workbook.xml").async("string");
+    const relsXml=await zip.file("xl/_rels/workbook.xml.rels").async("string");
+    const st=[...wbXml.matchAll(/<sheet[^>]*?name="([^"]+)"[^>]*?r:id="([^"]+)"[^>]*?\/>/g)]
+              .find(m=>m[1]===plannerSheetName);
+    if(st){
+      const rel=[...relsXml.matchAll(/<Relationship[^>]*?Id="([^"]+)"[^>]*?Target="([^"]+)"[^>]*?\/>/g)]
+                 .find(m=>m[1]===st[2]);
+      if(rel){
+        const path="xl/"+rel[2].replace(/^\/?xl\//,"");
+        const fz='<sheetView tabSelected="1" workbookViewId="0">'
+          +'<pane xSplit="1" ySplit="2" topLeftCell="B3" activePane="bottomRight" state="frozen"/>'
+          +'<selection pane="topRight"/><selection pane="bottomLeft"/>'
+          +'<selection pane="bottomRight" activeCell="B3" sqref="B3"/></sheetView>';
+        let xml=await zip.file(path).async("string");
+        xml=xml.replace(/<sheetView[^>]*workbookViewId="0"\s*\/>/,fz)
+               .replace(/<sheetView[^>]*workbookViewId="0"\s*>[\s\S]*?<\/sheetView>/,fz);
+        zip.file(path,xml);
+      }
+    }
+    const blob=await zip.generateAsync({type:"blob",
+      mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob); a.download=filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1500);
+  }catch(err){
+    console.error("Freeze-pane injection failed; writing without freeze.",err);
+    XLSX.writeFile(wb,filename);
+  }
+}
 
 /* Build one unit's worksheet. Subjects sit side-by-side (one column each) so the
  * Curricular Competencies band and the Content band line up horizontally across
