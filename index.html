@@ -684,7 +684,7 @@ function renderSubjectCards(){
       </button>
       <div class="subj-body" id="b_${cssId(cardKey)}" ${cardCol?"hidden":""}>
         ${gradeBlocks}
-        <label class="fld keyc"><span class="lab">Key concepts <span class="hint">for ${esc(subj)} in this unit — e.g. connection, causation, perspective</span></span>
+        <label class="fld keyc"><span class="lab">Notes <span class="hint">for ${esc(subj)} in this unit — e.g. connection, causation, perspective</span></span>
           <input type="text" data-kc="${esc(subj)}" value="${esc(ps.keyConcepts)}"></label>
       </div></div>`;
   }).join("");
@@ -1332,7 +1332,7 @@ function buildUnitSheet(r,p,u,t,hex){
   }else{
     // subject name row, then a key-concepts row — one cell per subject column
     subjects.forEach((s,c)=>put(R,c,xc(s.name,STY.subjHead))); R++;
-    subjects.forEach((s,c)=>put(R,c, s.key?xc(`Key concepts: ${s.key}`,STY.keyCol):xc("",STY.pad))); R++;
+    subjects.forEach((s,c)=>put(R,c, s.key?xc(`Notes: ${s.key}`,STY.keyCol):xc("",STY.pad))); R++;
 
     const band=(label,arrKey,style,headStyle)=>{
       const max=Math.max(0,...subjects.map(s=>s[arrKey].length));
